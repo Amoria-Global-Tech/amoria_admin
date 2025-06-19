@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0b1c36; /* heavy navy blue */
+  --foreground: #f1f5f9; /* light neutral for text (like slate-100) */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #08162b; /* slightly darker navy for dark mode */
+    --foreground: #e2e8f0; /* brighter foreground for contrast */
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, #0b1c36, #13294b);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #ff70a6, #d96da8);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #ff94b8, #e184c1);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #ff70a6 #0b1c36;
+}

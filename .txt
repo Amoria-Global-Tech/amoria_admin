@@ -1,0 +1,112 @@
+// Mock data for demonstration
+  const mockProducts: Product[] = [
+    {
+      id: 1,
+      name: "TaskFlow Pro",
+      description: "Advanced project management app with real-time collaboration, Gantt charts, and AI-powered insights.",
+      price: 14.99,
+      image_url: "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=400",
+      category: "Productivity",
+      is_available: true,
+      created_at: "2024-01-15T10:30:00Z",
+      updated_at: "2024-01-15T10:30:00Z"
+    },
+    {
+      id: 2,
+      name: "FitTrack Plus",
+      description: "Comprehensive fitness tracking app with workout plans, nutrition logging, and social challenges.",
+      price: 9.99,
+      image_url: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400",
+      category: "Health & Fitness",
+      is_available: true,
+      created_at: "2024-01-16T14:20:00Z",
+      updated_at: "2024-01-16T14:20:00Z"
+    },
+    {
+      id: 3,
+      name: "CodeSnap IDE",
+      description: "Mobile code editor with syntax highlighting, Git integration, and cloud sync for developers on the go.",
+      price: 19.99,
+      image_url: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400",
+      category: "Developer Tools",
+      is_available: false,
+      created_at: "2024-01-17T09:15:00Z",
+      updated_at: "2024-01-17T09:15:00Z"
+    },
+    {
+      id: 4,
+      name: "MindfulMe",
+      description: "Meditation and mindfulness app with guided sessions, sleep stories, and mood tracking.",
+      price: 12.99,
+      image_url: "https://images.unsplash.com/photo-1593062096033-9a26b09da705?w=400",
+      category: "Health & Fitness",
+      is_available: true,
+      created_at: "2024-01-18T11:45:00Z",
+      updated_at: "2024-01-18T11:45:00Z"
+    },
+    {
+      id: 5,
+      name: "BudgetWise",
+      description: "Personal finance management app with expense tracking, budget planning, and investment insights.",
+      price: 7.99,
+      image_url: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=400",
+      category: "Finance",
+      is_available: true,
+      created_at: "2024-01-19T08:00:00Z",
+      updated_at: "2024-01-19T08:00:00Z"
+    },
+    {
+      id: 6,
+      name: "LinguaFlow",
+      description: "AI-powered language learning app with conversation practice, grammar lessons, and cultural insights.",
+      price: 16.99,
+      image_url: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400",
+      category: "Education",
+      is_available: true,
+      created_at: "2024-01-20T13:30:00Z",
+      updated_at: "2024-01-20T13:30:00Z"
+    }
+  ];
+
+    const [services, setServices] = useState<Service[]>([
+    {
+      id: "1",
+      title: "Web Development",
+      description: "Custom website development with modern technologies and responsive design",
+      price: "2,500",
+      category: "Development",
+      status: "active",
+      icon: "bi bi-code-slash",
+      createdAt: "2024-01-15"
+    },
+    {
+      id: "2", 
+      title: "Digital Marketing",
+      description: "Comprehensive digital marketing strategies to boost your online presence",
+      price: "1,200",
+      category: "Marketing",
+      status: "active",
+      icon: "bi bi-megaphone",
+      createdAt: "2024-01-20"
+    },
+    {
+      id: "3",
+      title: "UI/UX Design",
+      description: "Professional user interface and experience design for web and mobile apps",
+      price: "1,800",
+      category: "Design",
+      status: "pending",
+      icon: "bi bi-palette",
+      createdAt: "2024-02-01"
+    },
+    {
+      id: "4",
+      title: "SEO Optimization",
+      description: "Search engine optimization to improve your website's visibility and ranking",
+      price: "800",
+      category: "Marketing",
+      status: "active",
+      icon: "bi bi-search",
+      createdAt: "2024-02-10"
+    }
+  ]);
