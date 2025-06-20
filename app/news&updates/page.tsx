@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import AddNewsModal from "../components/news/add";
 import NewsCard from "../components/news/card";
 
@@ -14,7 +14,7 @@ type NewsItem = {
 
 export default function NewsPage() {
   // Sample initial data (replace with real fetch from API)
-  const initialNews: NewsItem[] = [
+  const news: NewsItem[] = [
     {
       id: 1,
       title: "Platform Launch",
@@ -38,7 +38,6 @@ export default function NewsPage() {
     },
   ];
 
-  const [news, setNews] = useState<NewsItem[]>(initialNews);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDate, setFilterDate] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -56,10 +55,6 @@ export default function NewsPage() {
     });
   }, [news, searchTerm, filterDate]);
 
-  // Handle adding new news from modal
-  // For demo: you can enhance AddNewsModal to pass new item back via callback prop,
-  // but for now, we'll just close modal here.
-  // TODO: integrate with backend API calls for persistence
 
   return (
     <div className="">

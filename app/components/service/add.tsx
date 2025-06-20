@@ -109,7 +109,7 @@ export default function AddService({ onClose, onAdd }: AddServiceProps) {
 
       if (data.service) {
        
-        //onAdd(data.service);
+        onAdd(data.service);
         //onClose();
       } else {
         throw new Error('Invalid response format');

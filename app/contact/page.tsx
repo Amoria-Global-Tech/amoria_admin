@@ -67,7 +67,7 @@ export default function ContactUsPage() {
             </div>
             <h2 className="text-2xl font-bold text-white mb-4">Message Sent!</h2>
             <p className="text-white/70 mb-6">
-              Thank you for reaching out. We've received your message and will get back to you within 24 hours.
+              Thank you for reaching out. We&apos;ve received your message and will get back to you within 24 hours.
             </p>
             <button
               onClick={() => setSubmitted(false)}
@@ -90,8 +90,8 @@ export default function ContactUsPage() {
             Get In <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-pink-600">Touch</span>
           </h1>
           <p className="text-xl text-white/70 max-w-3xl mx-auto leading-relaxed">
-            Have a question, project idea, or just want to say hello? We'd love to hear from you. 
-            Send us a message and we'll respond as soon as possible.
+            Have a question, project idea, or just want to say hello? We&apos;d love to hear from you. 
+            Send us a message and we&apos;ll respond as soon as possible.
           </p>
         </div>
 
