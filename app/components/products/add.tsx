@@ -205,224 +205,239 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={handleClose}
       />
       {result && <AlertNotification message={result} type={result.includes('success') ? 'success':'error'}/>}
+      
       {/* Modal */}
-      <div className="relative w-full max-w-2xl">
-        <div className="bg-gradient-to-b from-[#0b1c36] to-[#13294b] bg-opacity-80 backdrop-blur-xl border border-blue-900/20 rounded-2xl shadow-2xl sm:pb-8">
+      <div className="relative w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
+        <div className="bg-gradient-to-b from-[#0b1c36] to-[#13294b] bg-opacity-95 backdrop-blur-xl border border-blue-900/20 rounded-xl sm:rounded-2xl shadow-2xl flex flex-col">
           
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-blue-900/20">
+          {/* Header - Fixed */}
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-blue-900/20 flex-shrink-0 bg-gradient-to-r from-[#0b1c36] to-[#13294b]">
             <div>
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="text-lg sm:text-xl font-bold text-white">
                 Add New App
               </h2>
-              <p className="text-white/60 mt-1">Create a new app in your inventory</p>
+              <p className="text-white/60 text-xs sm:text-sm mt-1 hidden sm:block">Create a new app in your inventory</p>
             </div>
             <button
               onClick={handleClose}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors duration-200 text-white/70 hover:text-white"
             >
-              <X size={24} />
+              <X size={20} className="sm:hidden" />
+              <X size={24} className="hidden sm:block" />
             </button>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[calc(90vh-120px)] overflow-y-auto">
-            
-            {/* Product Name */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
-                <Tag size={16} />
-                App Name *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Enter app name..."
-                className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-white/40 backdrop-blur-sm focus:outline-none focus:ring-2 transition-all duration-200 ${
-                  errors.name ? 'border-red-500 focus:ring-red-500' : 'border-blue-900/20 focus:ring-blue-500'
-                }`}
-                maxLength={150}
-              />
-              {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
-                <FileText size={16} />
-                Description *
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Describe your app's features..."
-                rows={4}
-                className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-white/40 backdrop-blur-sm focus:outline-none focus:ring-2 transition-all duration-200 resize-none ${
-                  errors.description ? 'border-red-500 focus:ring-red-500' : 'border-blue-900/20 focus:ring-blue-500'
-                }`}
-              />
-              {errors.description && <p className="text-red-400 text-sm mt-1">{errors.description}</p>}
-            </div>
-
-            {/* Price and Category Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Price */}
+          {/* Form - Scrollable */}
+          <div className="flex-1 overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              
+              {/* Product Name */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
-                  <DollarSign size={16} />
-                  Price *
+                  <Tag size={14} className="sm:hidden" />
+                  <Tag size={16} className="hidden sm:block" />
+                  App Name *
                 </label>
                 <input
-                  type="number"
-                  value={formData.price || ''}
-                  onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
-                  placeholder="9.99"
-                  step="0.01"
-                  min="0"
-                  className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-white/40 backdrop-blur-sm focus:outline-none focus:ring-2 transition-all duration-200 ${
-                    errors.price ? 'border-red-500 focus:ring-red-500' : 'border-blue-900/20 focus:ring-blue-500'
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  placeholder="Enter app name..."
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/10 border rounded-lg text-white placeholder-white/40 backdrop-blur-sm focus:outline-none focus:ring-2 transition-all duration-200 text-sm sm:text-base ${
+                    errors.name ? 'border-red-500 focus:ring-red-500' : 'border-blue-900/20 focus:ring-blue-500'
                   }`}
+                  maxLength={150}
                 />
-                {errors.price && <p className="text-red-400 text-sm mt-1">{errors.price}</p>}
+                {errors.name && <p className="text-red-400 text-xs sm:text-sm mt-1 break-words">{errors.name}</p>}
               </div>
 
-              {/* Category */}
+              {/* Description */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
-                  <Tag size={16} />
-                  Category *
+                  <FileText size={14} className="sm:hidden" />
+                  <FileText size={16} className="hidden sm:block" />
+                  Description *
                 </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => handleInputChange('category', e.target.value)}
-                  className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white backdrop-blur-sm focus:outline-none focus:ring-2 transition-all duration-200 appearance-none cursor-pointer ${
-                    errors.category ? 'border-red-500 focus:ring-red-500' : 'border-blue-900/20 focus:ring-blue-500'
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  placeholder="Describe your app's features..."
+                  rows={3}
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/10 border rounded-lg text-white placeholder-white/40 backdrop-blur-sm focus:outline-none focus:ring-2 transition-all duration-200 resize-none text-sm sm:text-base ${
+                    errors.description ? 'border-red-500 focus:ring-red-500' : 'border-blue-900/20 focus:ring-blue-500'
+                  }`}
+                />
+                {errors.description && <p className="text-red-400 text-xs sm:text-sm mt-1 break-words">{errors.description}</p>}
+              </div>
+
+              {/* Price and Category Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                {/* Price */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
+                    <DollarSign size={14} className="sm:hidden" />
+                    <DollarSign size={16} className="hidden sm:block" />
+                    Price *
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.price || ''}
+                    onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                    placeholder="9.99"
+                    step="0.01"
+                    min="0"
+                    className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/10 border rounded-lg text-white placeholder-white/40 backdrop-blur-sm focus:outline-none focus:ring-2 transition-all duration-200 text-sm sm:text-base ${
+                      errors.price ? 'border-red-500 focus:ring-red-500' : 'border-blue-900/20 focus:ring-blue-500'
+                    }`}
+                  />
+                  {errors.price && <p className="text-red-400 text-xs sm:text-sm mt-1 break-words">{errors.price}</p>}
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
+                    <Tag size={14} className="sm:hidden" />
+                    <Tag size={16} className="hidden sm:block" />
+                    Category *
+                  </label>
+                  <select
+                    value={formData.category}
+                    onChange={(e) => handleInputChange('category', e.target.value)}
+                    className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/10 border rounded-lg text-white backdrop-blur-sm focus:outline-none focus:ring-2 transition-all duration-200 appearance-none cursor-pointer text-sm sm:text-base ${
+                      errors.category ? 'border-red-500 focus:ring-red-500' : 'border-blue-900/20 focus:ring-blue-500'
+                    }`}
+                  >
+                    <option value="" className="bg-[#0b1c36]">Select a category</option>
+                    {categories.map(category => (
+                      <option key={category} value={category} className="bg-[#0b1c36]">{category}</option>
+                    ))}
+                  </select>
+                  {errors.category && <p className="text-red-400 text-xs sm:text-sm mt-1 break-words">{errors.category}</p>}
+                </div>
+              </div>
+
+              {/* Image Upload */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
+                  <ImageIcon size={14} className="sm:hidden" />
+                  <ImageIcon size={16} className="hidden sm:block" />
+                  App Image
+                </label>
+                <div className={`relative border-2 border-dashed rounded-lg p-4 sm:p-6 transition-all duration-200 ${
+                  errors.image ? 'border-red-500' : 'border-blue-900/40 hover:border-blue-700/60'
+                }`}>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="text-center">
+                    <ImageIcon className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-white/40" />
+                    <p className="mt-2 text-xs sm:text-sm text-white/60">
+                      <span className="font-medium text-blue-400">Click to upload</span>
+                      <span className="hidden sm:inline"> or drag and drop</span>
+                    </p>
+                    <p className="text-xs text-white/40">PNG, JPG, WebP up to 5MB</p>
+                  </div>
+                </div>
+                {errors.image && <p className="text-red-400 text-xs sm:text-sm mt-1 break-words">{errors.image}</p>}
+              </div>
+
+              {/* Image Preview */}
+              {imagePreview && (
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
+                    <ImageIcon size={14} className="sm:hidden" />
+                    <ImageIcon size={16} className="hidden sm:block" />
+                    Image Preview
+                  </label>
+                  <div className="relative w-full h-32 sm:h-48 bg-[#0b1c36] rounded-lg overflow-hidden border border-blue-900/20">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors duration-200"
+                    >
+                      <X size={14} className="sm:hidden" />
+                      <X size={16} className="hidden sm:block" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Availability Toggle */}
+              <div className="flex items-center justify-between p-3 sm:p-4 bg-white/5 rounded-lg border border-blue-900/20">
+                <div className="flex-1 min-w-0 mr-4">
+                  <h4 className="text-white font-medium text-sm sm:text-base">App Availability</h4>
+                  <p className="text-white/60 text-xs sm:text-sm mt-1">Set whether this app is currently available for download</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('is_available', !formData.is_available)}
+                  className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0b1c36] flex-shrink-0 ${
+                    formData.is_available ? 'bg-blue-600' : 'bg-white/20'
                   }`}
                 >
-                  <option value="" className="bg-[#0b1c36]">Select a category</option>
-                  {categories.map(category => (
-                    <option key={category} value={category} className="bg-[#0b1c36]">{category}</option>
-                  ))}
-                </select>
-                {errors.category && <p className="text-red-400 text-sm mt-1">{errors.category}</p>}
-              </div>
-            </div>
-
-            {/* Image Upload */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
-                <ImageIcon size={16} />
-                App Image
-              </label>
-              <div className={`relative border-2 border-dashed rounded-lg p-6 transition-all duration-200 ${
-                errors.image ? 'border-red-500' : 'border-blue-900/40 hover:border-blue-700/60'
-              }`}>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <div className="text-center">
-                  <ImageIcon className="mx-auto h-12 w-12 text-white/40" />
-                  <p className="mt-2 text-sm text-white/60">
-                    <span className="font-medium text-blue-400">Click to upload</span> or drag and drop
-                  </p>
-                  <p className="text-xs text-white/40">PNG, JPG, WebP up to 5MB</p>
-                </div>
-              </div>
-              {errors.image && <p className="text-red-400 text-sm mt-1">{errors.image}</p>}
-            </div>
-
-            {/* Image Preview */}
-            {imagePreview && (
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
-                  <ImageIcon size={16} />
-                  Image Preview
-                </label>
-                <div className="relative w-full h-48 bg-[#0b1c36] rounded-lg overflow-hidden border border-blue-900/20">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
+                  <span
+                    className={`inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                      formData.is_available ? 'translate-x-5 sm:translate-x-6' : 'translate-x-1'
+                    }`}
                   />
-                  <button
-                    type="button"
-                    onClick={removeImage}
-                    className="absolute top-2 right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors duration-200"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
+                </button>
               </div>
-            )}
+            </form>
+          </div>
 
-            {/* Availability Toggle */}
-            <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-blue-900/20">
-              <div>
-                <h4 className="text-white font-medium">App Availability</h4>
-                <p className="text-white/60 text-sm">Set whether this app is currently available for download</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleInputChange('is_available', !formData.is_available)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0b1c36] ${
-                  formData.is_available ? 'bg-blue-600' : 'bg-white/20'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-                    formData.is_available ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-blue-900/20">
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={isSubmitting}
-                className="px-6 py-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="relative px-6 py-2.5 bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white font-medium rounded-lg hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0b1c36] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-900/20"
-              >
-                <span className="flex items-center gap-2">
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      Adding App...
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={18} />
-                      Add App
-                    </>
-                  )}
-                </span>
-              </button>
-            </div>
-
-          </form>
+          {/* Form Actions - Fixed at bottom */}
+          <div className="flex items-center justify-center gap-3 p-4 sm:p-6 border-t border-blue-900/20 bg-gradient-to-r from-[#0b1c36] to-[#13294b] flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="flex-1 px-4 sm:px-6 py-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="flex-1 px-4 sm:px-6 py-2.5 bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0b1c36] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-900/20 text-sm sm:text-base"
+            >
+              <span className="flex items-center justify-center gap-2">
+                {isSubmitting ? (
+                  <>
+                    <svg className="animate-spin h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <span className="hidden sm:inline">Adding App...</span>
+                    <span className="sm:hidden">Adding...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} className="sm:hidden" />
+                    <Upload size={18} className="hidden sm:block" />
+                    <span className="hidden sm:inline">Add App</span>
+                    <span className="sm:hidden">Add</span>
+                  </>
+                )}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

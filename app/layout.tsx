@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const isAuth = pathname.startsWith("/login") || pathname.startsWith("/register");
+  const isAuth = pathname.startsWith("/auth") || pathname.startsWith("/register");
 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
@@ -73,7 +73,7 @@ export default function RootLayout({
       <body className="antialiased bg-white text-black dark:bg-[#0a0a0a] dark:text-white">
         {!isAuth && <Navbar />}
 
-        <main className={`${!isAuth ? "md:ml-72" : ""} p-4 sm:p-6 md:p-10`}>
+        <main className={`${!isAuth ? "md:ml-72 p-4 sm:p-6 md:p-10" : ""}`}>
           {children}
         </main>
       </body>

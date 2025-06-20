@@ -8,11 +8,13 @@ interface Service {
   id: string;
   title: string;
   description: string;
+  features: string;
   price: string;
   category: string;
   status: "active" | "inactive" | "pending";
   icon: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface ApiResponse {
@@ -66,39 +68,7 @@ export default function ServicesPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const addService = async (newService: Omit<Service, "id" | "createdAt">) => {
-    try {
-      const response = await fetch('/api/blog/services/get', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newService),
-      });
-
-      const result = await response.json();
-      
-      if (result.success) {
-        // Add the new service to the beginning of the list
-        setServices(prev => [result.data, ...prev]);
-        setIsAddServiceOpen(false);
-      } else {
-        console.error('Failed to add service:', result.error);
-        // You might want to show a toast notification here
-      }
-    } catch (err) {
-      console.error('Error adding service:', err);
-      // Fallback to local state update if API fails
-      const service: Service = {
-        ...newService,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setServices(prev => [service, ...prev]);
-      setIsAddServiceOpen(false);
-    }
-  };
-
+  
   const updateService = (id: string, updatedService: Partial<Service>) => {
     setServices(prev => prev.map(service => 
       service.id === id ? { ...service, ...updatedService } : service
@@ -177,7 +147,7 @@ export default function ServicesPage() {
               onClick={() => setIsAddServiceOpen(true)}
               className="bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white px-4 py-2 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 self-start lg:self-center"
             >
-              <i className="bi bi-plus-circle text-lg"></i>
+              <i className="bi bi-plus-circle text-lg text-nowrap"></i>
               Add New Service
             </button>
           </div>
@@ -291,7 +261,6 @@ export default function ServicesPage() {
       {isAddServiceOpen && (
         <AddService
           onClose={() => setIsAddServiceOpen(false)}
-          onAdd={addService}
         />
       )}
     </>

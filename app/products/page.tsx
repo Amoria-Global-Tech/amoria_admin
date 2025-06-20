@@ -3,65 +3,169 @@
 import { useState, useEffect } from 'react';
 import ProductCard from '../components/products/card';
 import AddProductModal from '../components/products/add';
+import EditProductModal from '../components/products/edit';
 
 interface Product {
   id: number;
   name: string;
   description: string;
   price: number;
-  image_url: string; // Updated to match API response (camelCase)
+  image_url: string;
   category: string;
-  isAvailable: boolean; // Updated to match API response (camelCase)
-  createdAt: string; // Updated to match API response (camelCase)
-  updated_at: string; // Updated to match API response (camelCase)
+  isAvailable: boolean;
+  createdAt: string;
+  updated_at: string;
 }
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Build query parameters (you can customize these based on your needs)
-        const params = new URLSearchParams();
-        // params.append('limit', '50'); // Uncomment to limit results
-        // params.append('available_only', 'false'); // Uncomment to show only available products
-        
-        const response = await fetch(`/api/blog/products/get?${params.toString()}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.products && Array.isArray(data.products)) {
-          setProducts(data.products);
-        } else {
-          console.error('Invalid response format:', data);
-          setProducts([]);
-          setError('Invalid data format received from server');
-        }
-        
-      } catch (error) {
-        console.error('Error fetching products:', error);
-        setError(error instanceof Error ? error.message : 'Failed to fetch products');
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProducts();
   }, []);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params = new URLSearchParams();
+      const response = await fetch(`/api/blog/products/get?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.products && Array.isArray(data.products)) {
+        setProducts(data.products);
+      } else {
+        console.error('Invalid response format:', data);
+        setProducts([]);
+        setError('Invalid data format received from server');
+      }
+      
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch products');
+      setProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteProduct = async (productId: number) => {
+    const confirmDelete = window.confirm('Are you sure you want to delete this product?');
+    if (!confirmDelete) return;
+
+    setIsDeleting(productId);
+    try {
+      const response = await fetch('/api/blog/products/add', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: productId.toString()
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete product');
+      }
+
+      // Remove product from state
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+      
+      // Show success message (you can replace with toast)
+      alert('Product deleted successfully');
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete product');
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateProduct = async (updatedProduct: Product) => {
+    try {
+      // Update the products list optimistically
+      setProducts(prevProducts => 
+        prevProducts.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+      );
+      setIsEditModalOpen(false);
+      setEditingProduct(null);
+      
+      // You might want to refresh to ensure data consistency
+      // await fetchProducts();
+    } catch (error) {
+      console.error('Error updating product:', error);
+      // Revert on error
+      await fetchProducts();
+    }
+  };
+
+  const handleToggleAvailability = async (productId: number) => {
+    try {
+      const product = products.find(p => p.id === productId);
+      if (!product) return;
+
+      const formData = new FormData();
+      formData.append('id', productId.toString());
+      formData.append('is_available', String(!product.isAvailable));
+
+      const response = await fetch('/api/blog/products/add', {
+        method: 'PATCH',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to toggle availability');
+      }
+
+      // Update the product in state
+      setProducts(prevProducts => 
+        prevProducts.map(p => 
+          p.id === productId 
+            ? { ...p, isAvailable: !p.isAvailable, updated_at: new Date().toISOString() }
+            : p
+        )
+      );
+
+      // Show success message
+      alert(`Product ${!product.isAvailable ? 'enabled' : 'disabled'} successfully`);
+    } catch (error) {
+      console.error('Error toggling availability:', error);
+      alert('Failed to update availability');
+    }
+  };
+
+  const handleAddProduct = async (newProduct: Product) => {
+    setProducts(prevProducts => [newProduct, ...prevProducts]);
+    setIsAddModalOpen(false);
+  };
+
+  const refreshProducts = async () => {
+    await fetchProducts();
+  };
 
   const categories = ['all', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
 
@@ -71,37 +175,6 @@ export default function ProductsPage() {
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
-
-  const handleAddProduct = async (newProduct: Product) => {
-    setProducts(prevProducts => [newProduct, ...prevProducts]);
-    setIsAddModalOpen(false);
-
-  };
-
-  // Refresh products function (useful for after adding/updating)
-  const refreshProducts = async () => {
-    const fetchProducts = async () => {
-      try {
-        setError(null);
-        const response = await fetch('/api/blog/products/get');
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch products: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.products && Array.isArray(data.products)) {
-          setProducts(data.products);
-        }
-      } catch (error) {
-        console.error('Error refreshing products:', error);
-        setError(error instanceof Error ? error.message : 'Failed to refresh products');
-      }
-    };
-
-    await fetchProducts();
-  };
 
   return (
     <>
@@ -131,7 +204,7 @@ export default function ProductsPage() {
                 onClick={() => setIsAddModalOpen(true)}
                 className="bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white px-4 py-2 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
               >
-                <i className="bi bi-plus-circle text-lg"></i>
+                <i className="bi bi-plus-circle text-lg text-nowrap"></i>
                 Add New App
               </button>
             </div>
@@ -244,9 +317,15 @@ export default function ProductsPage() {
             ))}
           </div>
         ) : filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard 
+                key={product.id} 
+                product={product}
+                onEdit={handleEditProduct}
+                onDelete={handleDeleteProduct}
+                onToggleAvailability={handleToggleAvailability}
+              />
             ))}
           </div>
         ) : (
@@ -276,6 +355,19 @@ export default function ProductsPage() {
         onClose={() => setIsAddModalOpen(false)}
         onAddProduct={handleAddProduct}
       />
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <EditProductModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingProduct(null);
+          }}
+          product={editingProduct}
+          onUpdateProduct={handleUpdateProduct}
+        />
+      )}
     </>
   );
 }

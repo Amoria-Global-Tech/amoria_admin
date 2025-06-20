@@ -14,10 +14,9 @@ interface Service {
 
 interface AddServiceProps {
   onClose: () => void;
-  onAdd: (service: Service & { id: number; createdAt: string; updatedAt: string }) => void;
 }
 
-export default function AddService({ onClose, onAdd }: AddServiceProps) {
+export default function AddService({ onClose }: AddServiceProps) {
   const [formData, setFormData] = useState<Service>({
     title: "",
     description: "",
@@ -108,9 +107,7 @@ export default function AddService({ onClose, onAdd }: AddServiceProps) {
       }
 
       if (data.service) {
-       
-        onAdd(data.service);
-        //onClose();
+        onClose();
       } else {
         throw new Error('Invalid response format');
       }
@@ -135,17 +132,18 @@ export default function AddService({ onClose, onAdd }: AddServiceProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-gradient-to-br from-[#0b1c36] to-[#13294b] bg-opacity-95 backdrop-blur-xl border border-blue-900/20 shadow-2xl rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="bg-gradient-to-br from-[#0b1c36] to-[#13294b] bg-opacity-95 backdrop-blur-xl border border-blue-900/20 shadow-2xl rounded-xl sm:rounded-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+        
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 bg-gradient-to-r from-[#0b1c36] to-[#13294b] flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="bg-pink-400/20 p-3 rounded-xl">
-              <i className="bi bi-plus-circle text-pink-400 text-xl"></i>
+            <div className="bg-pink-400/20 p-2 sm:p-3 rounded-lg sm:rounded-xl">
+              <i className="bi bi-plus-circle text-pink-400 text-lg sm:text-xl"></i>
             </div>
             <div>
-              <h2 className="text-white text-xl font-semibold">Add New Service</h2>
-              <p className="text-white/60 text-sm">Create a new service offering</p>
+              <h2 className="text-white text-lg sm:text-xl font-semibold">Add New Service</h2>
+              <p className="text-white/60 text-xs sm:text-sm hidden sm:block">Create a new service offering</p>
             </div>
           </div>
           
@@ -154,250 +152,256 @@ export default function AddService({ onClose, onAdd }: AddServiceProps) {
             disabled={isSubmitting}
             className="text-white/60 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
           >
-            <i className="bi bi-x-lg text-xl"></i>
+            <i className="bi bi-x-lg text-lg sm:text-xl"></i>
           </button>
         </div>
 
-        {/* Submit Error */}
-        {submitError && (
-          <div className="mx-6 mt-6 bg-red-500/20 border border-red-500/30 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <i className="bi bi-exclamation-triangle text-red-400 text-xl"></i>
-              <div>
-                <h3 className="text-red-400 font-semibold">Error</h3>
-                <p className="text-red-300">{submitError}</p>
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Submit Error */}
+          {submitError && (
+            <div className="mx-4 sm:mx-6 mt-4 sm:mt-6 bg-red-500/20 border border-red-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4">
+              <div className="flex items-start gap-3">
+                <i className="bi bi-exclamation-triangle text-red-400 text-lg sm:text-xl flex-shrink-0 mt-0.5"></i>
+                <div className="min-w-0">
+                  <h3 className="text-red-400 font-semibold text-sm sm:text-base">Error</h3>
+                  <p className="text-red-300 text-sm break-words">{submitError}</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Service Title */}
-          <div>
-            <label className="block text-white font-medium mb-2">
-              Service Title *
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => handleChange("title", e.target.value)}
-              placeholder="Enter service title"
-              disabled={isSubmitting}
-              className={`w-full bg-white/10 backdrop-blur-sm border rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none transition-colors disabled:opacity-50 ${
-                errors.title ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
-              }`}
-            />
-            {errors.title && (
-              <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
-                <i className="bi bi-exclamation-circle"></i>
-                {errors.title}
-              </p>
-            )}
-          </div>
-
-          {/* Service Description */}
-          <div>
-            <label className="block text-white font-medium mb-2">
-              Description *
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => handleChange("description", e.target.value)}
-              placeholder="Describe your service offering"
-              rows={4}
-              disabled={isSubmitting}
-              className={`w-full bg-white/10 backdrop-blur-sm border rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none resize-none transition-colors disabled:opacity-50 ${
-                errors.description ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
-              }`}
-            />
-            {errors.description && (
-              <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
-                <i className="bi bi-exclamation-circle"></i>
-                {errors.description}
-              </p>
-            )}
-          </div>
-
-           {/* Service features */}
-           <div>
-            <label className="block text-white font-medium mb-2">
-              Service features *
-            </label>
-            <input
-              type="text"
-              value={formData.features}
-              onChange={(e) => handleChange("features", e.target.value)}
-              placeholder="Enter service features"
-              disabled={isSubmitting}
-              className={`w-full bg-white/10 backdrop-blur-sm border rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none transition-colors disabled:opacity-50 ${
-                errors.features ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
-              }`}
-            />
-            {errors.features && (
-              <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
-                <i className="bi bi-exclamation-circle"></i>
-                {errors.features}
-              </p>
-            )}
-          </div>
-
-          {/* Price and Category Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Price */}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+            {/* Service Title */}
             <div>
-              <label className="block text-white font-medium mb-2">
-                Price *
+              <label className="block text-white font-medium mb-2 text-sm sm:text-base">
+                Service Title *
               </label>
-              <div className="relative">
-                <i className="bi bi-currency-dollar absolute left-4 top-1/2 transform -translate-y-1/2 text-pink-400"></i>
-                <input
-                  type="text"
-                  value={formData.price}
-                  onChange={(e) => handleChange("price", e.target.value)}
-                  placeholder="e.g., $1,500"
-                  disabled={isSubmitting}
-                  className={`w-full bg-white/10 backdrop-blur-sm border rounded-xl pl-12 pr-4 py-3 text-white placeholder-white/60 focus:outline-none transition-colors disabled:opacity-50 ${
-                    errors.price ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
-                  }`}
-                />
-              </div>
-              {errors.price && (
-                <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
-                  <i className="bi bi-exclamation-circle"></i>
-                  {errors.price}
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => handleChange("title", e.target.value)}
+                placeholder="Enter service title"
+                disabled={isSubmitting}
+                className={`w-full bg-white/10 backdrop-blur-sm border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white placeholder-white/60 focus:outline-none transition-colors disabled:opacity-50 text-sm sm:text-base ${
+                  errors.title ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
+                }`}
+              />
+              {errors.title && (
+                <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center gap-1">
+                  <i className="bi bi-exclamation-circle flex-shrink-0"></i>
+                  <span className="break-words">{errors.title}</span>
                 </p>
               )}
             </div>
 
-            {/* Category */}
+            {/* Service Description */}
             <div>
-              <label className="block text-white font-medium mb-2">
-                Category
+              <label className="block text-white font-medium mb-2 text-sm sm:text-base">
+                Description *
               </label>
-              <select
-                value={formData.category}
-                onChange={(e) => handleChange("category", e.target.value)}
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleChange("description", e.target.value)}
+                placeholder="Describe your service offering"
+                rows={3}
                 disabled={isSubmitting}
-                className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-pink-400 transition-colors disabled:opacity-50"
-              >
-                {categories.map(category => (
-                  <option key={category.value} value={category.value} className="bg-[#0b1c36] text-white">
-                    {category.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Icon and Status Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Icon Selection */}
-            <div>
-              <label className="block text-white font-medium mb-2">
-                Icon
-              </label>
-              <select
-                value={formData.icon}
-                onChange={(e) => handleChange("icon", e.target.value)}
-                disabled={isSubmitting}
-                className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-pink-400 transition-colors disabled:opacity-50"
-              >
-                {iconOptions.map(option => (
-                  <option key={option.value} value={option.value} className="bg-[#0b1c36] text-white">
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              <div className="mt-2 flex items-center gap-2 text-white/60 text-sm">
-                <i className={formData.icon}></i>
-                <span>Preview</span>
-              </div>
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="block text-white font-medium mb-2">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) => handleChange("status", e.target.value as "active" | "inactive" | "pending")}
-                disabled={isSubmitting}
-                className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-pink-400 transition-colors disabled:opacity-50"
-              >
-                {statusOptions.map(status => (
-                  <option key={status.value} value={status.value} className="bg-[#0b1c36] text-white">
-                    {status.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Preview Card */}
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-            <h3 className="text-white font-medium mb-3 flex items-center gap-2">
-              <i className="bi bi-eye text-pink-400"></i>
-              Preview
-            </h3>
-            <div className="bg-gradient-to-br from-[#0b1c36] to-[#13294b] bg-opacity-80 backdrop-blur-sm border border-blue-900/20 rounded-xl p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="bg-pink-400/20 p-2 rounded-lg">
-                  <i className={`${formData.icon} text-pink-400`}></i>
-                </div>
-                <div>
-                  <h4 className="text-white font-semibold">
-                    {formData.title || "Service Title"}
-                  </h4>
-                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium border ${
-                    formData.status === "active" ? "bg-green-400/20 text-green-400 border-green-400/30" :
-                    formData.status === "inactive" ? "bg-red-400/20 text-red-400 border-red-400/30" :
-                    "bg-yellow-400/20 text-yellow-400 border-yellow-400/30"
-                  }`}>
-                    {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
-                  </span>
-                </div>
-              </div>
-              <p className="text-white/80 text-sm mb-3">
-                {formData.description || "Service description will appear here"}
-              </p>
-              <div className="flex items-center justify-between">
-                <span className="text-white/60 text-sm">{formData.category}</span>
-                <span className="text-pink-400 font-semibold">{formData.price || "$0"}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border border-white/20 hover:border-white/30 px-6 py-3 rounded-xl font-medium transition-all duration-200 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <>
-                  <i className="bi bi-arrow-clockwise animate-spin"></i>
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-plus-circle"></i>
-                  Add Service
-                </>
+                className={`w-full bg-white/10 backdrop-blur-sm border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white placeholder-white/60 focus:outline-none resize-none transition-colors disabled:opacity-50 text-sm sm:text-base ${
+                  errors.description ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
+                }`}
+              />
+              {errors.description && (
+                <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center gap-1">
+                  <i className="bi bi-exclamation-circle flex-shrink-0"></i>
+                  <span className="break-words">{errors.description}</span>
+                </p>
               )}
-            </button>
-          </div>
-        </form>
+            </div>
+
+            {/* Service Features */}
+            <div>
+              <label className="block text-white font-medium mb-2 text-sm sm:text-base">
+                Service Features *
+              </label>
+              <input
+                type="text"
+                value={formData.features}
+                onChange={(e) => handleChange("features", e.target.value)}
+                placeholder="Enter service features"
+                disabled={isSubmitting}
+                className={`w-full bg-white/10 backdrop-blur-sm border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white placeholder-white/60 focus:outline-none transition-colors disabled:opacity-50 text-sm sm:text-base ${
+                  errors.features ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
+                }`}
+              />
+              {errors.features && (
+                <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center gap-1">
+                  <i className="bi bi-exclamation-circle flex-shrink-0"></i>
+                  <span className="break-words">{errors.features}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Price and Category Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              {/* Price */}
+              <div>
+                <label className="block text-white font-medium mb-2 text-sm sm:text-base">
+                  Price *
+                </label>
+                <div className="relative">
+                  <i className="bi bi-currency-dollar absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-pink-400"></i>
+                  <input
+                    type="text"
+                    value={formData.price}
+                    onChange={(e) => handleChange("price", e.target.value)}
+                    placeholder="e.g., $1,500"
+                    disabled={isSubmitting}
+                    className={`w-full bg-white/10 backdrop-blur-sm border rounded-lg sm:rounded-xl pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-white placeholder-white/60 focus:outline-none transition-colors disabled:opacity-50 text-sm sm:text-base ${
+                      errors.price ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
+                    }`}
+                  />
+                </div>
+                {errors.price && (
+                  <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center gap-1">
+                    <i className="bi bi-exclamation-circle flex-shrink-0"></i>
+                    <span className="break-words">{errors.price}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-white font-medium mb-2 text-sm sm:text-base">
+                  Category
+                </label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => handleChange("category", e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white focus:outline-none focus:border-pink-400 transition-colors disabled:opacity-50 text-sm sm:text-base"
+                >
+                  {categories.map(category => (
+                    <option key={category.value} value={category.value} className="bg-[#0b1c36] text-white">
+                      {category.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Icon and Status Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              {/* Icon Selection */}
+              <div>
+                <label className="block text-white font-medium mb-2 text-sm sm:text-base">
+                  Icon
+                </label>
+                <select
+                  value={formData.icon}
+                  onChange={(e) => handleChange("icon", e.target.value)}
+                  disabled={isSubmitting}
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white focus:outline-none focus:border-pink-400 transition-colors disabled:opacity-50 text-sm sm:text-base"
+                >
+                  {iconOptions.map(option => (
+                    <option key={option.value} value={option.value} className="bg-[#0b1c36] text-white">
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-2 flex items-center gap-2 text-white/60 text-xs sm:text-sm">
+                  <i className={formData.icon}></i>
+                  <span>Preview</span>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-white font-medium mb-2 text-sm sm:text-base">
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => handleChange("status", e.target.value as "active" | "inactive" | "pending")}
+                  disabled={isSubmitting}
+                  className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white focus:outline-none focus:border-pink-400 transition-colors disabled:opacity-50 text-sm sm:text-base"
+                >
+                  {statusOptions.map(status => (
+                    <option key={status.value} value={status.value} className="bg-[#0b1c36] text-white">
+                      {status.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Preview Card */}
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg sm:rounded-xl p-3 sm:p-4">
+              <h3 className="text-white font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
+                <i className="bi bi-eye text-pink-400"></i>
+                Preview
+              </h3>
+              <div className="bg-gradient-to-br from-[#0b1c36] to-[#13294b] bg-opacity-80 backdrop-blur-sm border border-blue-900/20 rounded-lg sm:rounded-xl p-3 sm:p-4">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="bg-pink-400/20 p-2 rounded-lg flex-shrink-0">
+                    <i className={`${formData.icon} text-pink-400 text-sm sm:text-base`}></i>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-white font-semibold text-sm sm:text-base mb-1 break-words">
+                      {formData.title || "Service Title"}
+                    </h4>
+                    <span className={`inline-block px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium border ${
+                      formData.status === "active" ? "bg-green-400/20 text-green-400 border-green-400/30" :
+                      formData.status === "inactive" ? "bg-red-400/20 text-red-400 border-red-400/30" :
+                      "bg-yellow-400/20 text-yellow-400 border-yellow-400/30"
+                    }`}>
+                      {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-white/80 text-xs sm:text-sm mb-3 break-words">
+                  {formData.description || "Service description will appear here"}
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-white/60 text-xs sm:text-sm truncate">{formData.category}</span>
+                  <span className="text-pink-400 font-semibold text-sm sm:text-base flex-shrink-0">{formData.price || "$0"}</span>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Action Buttons - Fixed at bottom */}
+        <div className="flex items-center gap-3 p-4 sm:p-6 border-t border-white/10 bg-gradient-to-r from-[#0b1c36] to-[#13294b] flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border border-white/20 hover:border-white/30 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-medium transition-all duration-200 disabled:opacity-50 text-sm sm:text-base"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="flex-1 bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+          >
+            {isSubmitting ? (
+              <>
+                <i className="bi bi-arrow-clockwise animate-spin"></i>
+                <span className="hidden sm:inline">Adding...</span>
+                <span className="sm:hidden">Add...</span>
+              </>
+            ) : (
+              <>
+                <i className="bi bi-plus-circle"></i>
+                <span className="hidden sm:inline">Add Service</span>
+                <span className="sm:hidden">Add</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
