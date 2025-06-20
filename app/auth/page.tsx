@@ -263,7 +263,7 @@ export default function AuthPage() {
                 {isSubmitting ? (
                   <>
                     <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></div>
-                    Sending OTP...
+                    Verifying...
                   </>
                 ) : (
                   <>
@@ -345,7 +345,7 @@ export default function AuthPage() {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-white/10">
             <p className="text-white/50 text-xs text-center">
-              Secure login powered by OTP verification
+              Secure login powered by Amoria
             </p>
           </div>
         </div>
