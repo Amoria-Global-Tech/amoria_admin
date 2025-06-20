@@ -46,7 +46,6 @@ export default function ProductCard({
     const day = String(date.getDate()).padStart(2, "0");
     const hours = String(date.getHours()).padStart(2, "0");
     const minutes = String(date.getMinutes()).padStart(2, "0");
-    const seconds = String(date.getSeconds()).padStart(2, "0");
     const prefix = Number(hours) < 12 ? 'AM' : 'PM'
     return `${month}, ${day} ${year} ${hours}:${minutes} ${prefix}`;
   }

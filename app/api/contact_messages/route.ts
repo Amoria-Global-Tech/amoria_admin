@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
     `;
     
     const countParams: any[] = [];
-    let countParamIndex = 1;
+    const countParamIndex = 1;
 
     // Apply same filters for count
     if (status && status !== 'all') {

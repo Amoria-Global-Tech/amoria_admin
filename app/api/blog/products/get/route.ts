@@ -2,19 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import client from "@/app/api/utils/db";
 
-// Define types for the Product response
-type Product = {
-  id: number;
-  name: string;
-  description: string | null;
-  price: number;
-  category: string | null;
-  is_available: boolean;
-  image_url: string;
-  created_at: Date;
-  updated_at: Date;
-};
-
 // Handle GET request for fetching all products by newest
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {

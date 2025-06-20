@@ -2,18 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import client from "@/app/api/utils/db";
 
-// Define types for the Service response
-type Service = {
-  id: number;
-  name: string;
-  description: string | null;
-  price: string;
-  category: string | null;
-  status: "active" | "inactive" | "pending";
-  icon: string;
-  created_at: Date;
-  updated_at: Date;
-};
 
 // Handle GET request for fetching all services by newest
 export async function GET(req: NextRequest): Promise<NextResponse> {
