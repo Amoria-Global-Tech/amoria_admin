@@ -39,29 +39,29 @@ export default function Navbar() {
   const jamboLushStructure = {
     users: {
       hosts: [
-        { href: "/jambolush/users/hosts/payments", label: "Payments", icon: "bi bi-credit-card" },
-        { href: "/jambolush/users/hosts/analytics", label: "Analytics", icon: "bi bi-graph-up" },
-        { href: "/jambolush/users/hosts/properties", label: "Properties", icon: "bi bi-house" }
+        { href: "/jambolush/hosts/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/hosts/analytics", label: "Analytics", icon: "bi bi-graph-up" },
+        { href: "/jambolush/hosts/properties", label: "Properties", icon: "bi bi-house" }
       ],
       fieldAgents: [
-        { href: "/jambolush/users/field-agents/payments", label: "Payments", icon: "bi bi-credit-card" },
-        { href: "/jambolush/users/field-agents/analytics", label: "Analytics", icon: "bi bi-graph-up" },
-        { href: "/jambolush/users/field-agents/properties", label: "Properties", icon: "bi bi-house" }
+        { href: "/jambolush/agents/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/agents/analytics", label: "Analytics", icon: "bi bi-graph-up" },
+        { href: "/jambolush/agents/properties", label: "Properties", icon: "bi bi-house" }
       ],
       admins: [
-        { href: "/jambolush/users/admins/payments", label: "Payments", icon: "bi bi-credit-card" },
-        { href: "/jambolush/users/admins/analytics", label: "Analytics", icon: "bi bi-graph-up" }
+        { href: "/jambolush/admins/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/admins/analytics", label: "Analytics", icon: "bi bi-graph-up" }
       ],
       guests: [
-        { href: "/jambolush/users/guests/payments", label: "Payments", icon: "bi bi-credit-card" },
-        { href: "/jambolush/users/guests/bookings", label: "Bookings", icon: "bi bi-calendar-check" },
-        { href: "/jambolush/users/guests/analytics", label: "Analytics", icon: "bi bi-graph-up" }
+        { href: "/jambolush/guests/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/guests/bookings", label: "Bookings", icon: "bi bi-calendar-check" },
+        { href: "/jambolush/guests/analytics", label: "Analytics", icon: "bi bi-graph-up" }
       ],
       tourGuides: [
-        { href: "/jambolush/users/tour-guides/payments", label: "Payments", icon: "bi bi-credit-card" },
-        { href: "/jambolush/users/tour-guides/analytics", label: "Analytics", icon: "bi bi-graph-up" },
-        { href: "/jambolush/users/tour-guides/tickets", label: "Tickets", icon: "bi bi-ticket" },
-        { href: "/jambolush/users/tour-guides/tours", label: "Tours", icon: "bi bi-map" }
+        { href: "/jambolush/tour-guides/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/tour-guides/analytics", label: "Analytics", icon: "bi bi-graph-up" },
+        { href: "/jambolush/tour-guides/tickets", label: "Tickets", icon: "bi bi-ticket" },
+        { href: "/jambolush/tour-guides/tours", label: "Tours", icon: "bi bi-map" }
       ]
     },
     direct: [
