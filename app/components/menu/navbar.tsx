@@ -18,6 +18,15 @@ export default function Navbar() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  
+  // Dropdown states
+  const [jamboLushOpen, setJamboLushOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
+  const [hostsOpen, setHostsOpen] = useState(false);
+  const [fieldAgentsOpen, setFieldAgentsOpen] = useState(false);
+  const [adminsOpen, setAdminsOpen] = useState(false);
+  const [guestsOpen, setGuestsOpen] = useState(false);
+  const [tourGuidesOpen, setTourGuidesOpen] = useState(false);
 
   const navItems = [
     { href: "/", label: "Overview", icon: "bi bi-bar-chart-line" },
@@ -25,6 +34,59 @@ export default function Navbar() {
     { href: "/services", label: "Services", icon: "bi bi-gear-wide-connected" },
     { href: "/messages", label: "Messages", icon: "bi bi-chat-dots" },
   ];
+
+  // JamboLush navigation structure
+  const jamboLushStructure = {
+    users: {
+      hosts: [
+        { href: "/jambolush/users/hosts/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/users/hosts/analytics", label: "Analytics", icon: "bi bi-graph-up" },
+        { href: "/jambolush/users/hosts/properties", label: "Properties", icon: "bi bi-house" }
+      ],
+      fieldAgents: [
+        { href: "/jambolush/users/field-agents/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/users/field-agents/analytics", label: "Analytics", icon: "bi bi-graph-up" },
+        { href: "/jambolush/users/field-agents/properties", label: "Properties", icon: "bi bi-house" }
+      ],
+      admins: [
+        { href: "/jambolush/users/admins/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/users/admins/analytics", label: "Analytics", icon: "bi bi-graph-up" }
+      ],
+      guests: [
+        { href: "/jambolush/users/guests/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/users/guests/bookings", label: "Bookings", icon: "bi bi-calendar-check" },
+        { href: "/jambolush/users/guests/analytics", label: "Analytics", icon: "bi bi-graph-up" }
+      ],
+      tourGuides: [
+        { href: "/jambolush/users/tour-guides/payments", label: "Payments", icon: "bi bi-credit-card" },
+        { href: "/jambolush/users/tour-guides/analytics", label: "Analytics", icon: "bi bi-graph-up" },
+        { href: "/jambolush/users/tour-guides/tickets", label: "Tickets", icon: "bi bi-ticket" },
+        { href: "/jambolush/users/tour-guides/tours", label: "Tours", icon: "bi bi-map" }
+      ]
+    },
+    direct: [
+      { href: "/jambolush/support", label: "Support", icon: "bi bi-headset" },
+      { href: "/jambolush/settings", label: "Settings", icon: "bi bi-gear" }
+    ]
+  };
+
+  // Check if current path is within JamboLush section
+  const isJamboLushPath = pathname.startsWith('/jambolush') || pathname === '/JamboLush';
+
+  // Auto-expand dropdowns based on current path
+  useEffect(() => {
+    if (pathname.startsWith('/jambolush')) {
+      setJamboLushOpen(true);
+      if (pathname.includes('/users/')) {
+        setUsersOpen(true);
+        if (pathname.includes('/hosts/')) setHostsOpen(true);
+        if (pathname.includes('/field-agents/')) setFieldAgentsOpen(true);
+        if (pathname.includes('/admins/')) setAdminsOpen(true);
+        if (pathname.includes('/guests/')) setGuestsOpen(true);
+        if (pathname.includes('/tour-guides/')) setTourGuidesOpen(true);
+      }
+    }
+  }, [pathname]);
 
   // Fetch unread messages count
   const fetchUnreadCount = async () => {
@@ -38,7 +100,6 @@ export default function Navbar() {
 
       if (response.ok) {
         const result = await response.json();
-        // Use same logic as MessagesPage - filter messages with status "new"
         const newMessages = result.data?.filter((message: any) => 
           message.status === "new"
         ) || [];
@@ -56,7 +117,6 @@ export default function Navbar() {
   useEffect(() => {
     const checkAuth = () => {
       try {
-        // Check for authentication in localStorage
         const isAuthenticated = localStorage.getItem('authenticated');
         const userInfoData = localStorage.getItem('userInfo');
 
@@ -65,20 +125,15 @@ export default function Navbar() {
           return;
         }
 
-        // Get user info from localStorage
         if (userInfoData) {
           const parsedUserInfo = JSON.parse(userInfoData);
           setUserInfo(parsedUserInfo);
-          
-          // Fetch unread messages count after authentication
           fetchUnreadCount();
         } else {
-          // If no user info found, redirect to auth
           router.push('/auth');
         }
       } catch (error) {
         console.error('Error checking authentication:', error);
-        // Clear potentially corrupted data
         localStorage.removeItem('authenticated');
         localStorage.removeItem('authToken');
         localStorage.removeItem('userInfo');
@@ -91,21 +146,21 @@ export default function Navbar() {
     checkAuth();
   }, [router]);
 
-  // Refresh unread count periodically (every 30 seconds)
+  // Refresh unread count periodically
   useEffect(() => {
     if (!userInfo) return;
 
     const interval = setInterval(() => {
       fetchUnreadCount();
-    }, 10000); // 10 seconds
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [userInfo, unreadCount]);
 
-  // Auto-hide navbar on mobile when user scrolls or touches outside
+  // Auto-hide navbar on mobile
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) { // lg breakpoint
+      if (window.innerWidth >= 1024) {
         setIsOpen(false);
       }
     };
@@ -147,7 +202,6 @@ export default function Navbar() {
   // Handle logout
   const handleLogout = async () => {
     try {
-      // Get user info before clearing localStorage
       const userInfoData = localStorage.getItem('userInfo');
       let userData = null;
       
@@ -159,7 +213,6 @@ export default function Navbar() {
         }
       }
 
-      // Clear all localStorage data first (immediate logout)
       localStorage.removeItem('authenticated');
       localStorage.removeItem('authToken');
       localStorage.removeItem('userInfo');
@@ -167,7 +220,6 @@ export default function Navbar() {
       localStorage.removeItem('authOTP');
       localStorage.removeItem('otpTimestamp');
       
-      // Make API call to logout on server side (with user info)
       try {
         await fetch('/api/auth/logout', { 
           method: 'POST',
@@ -181,14 +233,11 @@ export default function Navbar() {
         });
       } catch (apiError) {
         console.warn('Server logout failed:', apiError);
-        // Continue with client-side logout even if server call fails
       }
       
-      // Redirect to auth page
       router.push('/auth');
     } catch (error) {
       console.error('Logout error:', error);
-      // Force redirect even if there's an error
       router.push('/auth');
     }
   };
@@ -227,7 +276,7 @@ export default function Navbar() {
         className={`fixed top-0 left-0 h-screen w-72 
           bg-gradient-to-b from-[#0b1c36] to-[#13294b] 
           bg-opacity-90 backdrop-blur-xl border-r border-blue-900/20 shadow-2xl 
-          text-white p-6 flex flex-col z-40
+          text-white p-6 flex flex-col z-40 overflow-y-auto
           transition-transform duration-300 ease-in-out
           ${
             isOpen
@@ -260,6 +309,7 @@ export default function Navbar() {
             Company Dashboard
           </h2>
           <ul className="space-y-1">
+            {/* Regular Navigation Items */}
             {navItems.map(({ href, label, icon }) => (
               <li key={href}>
                 <Link href={href}>
@@ -285,6 +335,249 @@ export default function Navbar() {
                 </Link>
               </li>
             ))}
+
+            {/* JamboLush Dropdown */}
+            <li>
+              <div
+                onClick={() => setJamboLushOpen(!jamboLushOpen)}
+                className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg text-sm font-medium cursor-pointer transition-all group
+                  ${
+                    isJamboLushPath
+                      ? "bg-gradient-to-r from-pink-400/20 to-pink-500/20 text-white font-semibold shadow-inner border border-pink-400/30"
+                      : "text-white/70 hover:bg-white/10 hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <i className={`bi bi-elephant text-lg ${isJamboLushPath ? 'text-pink-400' : 'group-hover:text-pink-300'}`}></i>
+                  JamboLush
+                </div>
+                <i className={`bi bi-chevron-${jamboLushOpen ? 'down' : 'right'} text-sm transition-transform`}></i>
+              </div>
+
+              {/* JamboLush Dropdown Content */}
+              {jamboLushOpen && (
+                <ul className="mt-2 ml-4 space-y-1 border-l border-white/10 pl-4">
+                  {/* Users Dropdown */}
+                  <li>
+                    <div
+                      onClick={() => setUsersOpen(!usersOpen)}
+                      className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all text-white/70 hover:bg-white/10 hover:text-white"
+                    >
+                      <div className="flex items-center gap-3">
+                        <i className="bi bi-people text-sm"></i>
+                        Users
+                      </div>
+                      <i className={`bi bi-chevron-${usersOpen ? 'down' : 'right'} text-xs transition-transform`}></i>
+                    </div>
+
+                    {/* Users Sub-items */}
+                    {usersOpen && (
+                      <ul className="mt-1 ml-3 space-y-1 border-l border-white/10 pl-3">
+                        {/* Hosts */}
+                        <li>
+                          <div
+                            onClick={() => setHostsOpen(!hostsOpen)}
+                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all text-white/60 hover:bg-white/10 hover:text-white"
+                          >
+                            <div className="flex items-center gap-2">
+                              <i className="bi bi-house-door text-xs"></i>
+                              Hosts
+                            </div>
+                            <i className={`bi bi-chevron-${hostsOpen ? 'down' : 'right'} text-xs transition-transform`}></i>
+                          </div>
+                          {hostsOpen && (
+                            <ul className="mt-1 ml-2 space-y-1">
+                              {jamboLushStructure.users.hosts.map(({ href, label, icon }) => (
+                                <li key={href}>
+                                  <Link href={href}>
+                                    <div
+                                      onClick={() => setIsOpen(false)}
+                                      className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs cursor-pointer transition-all
+                                        ${
+                                          pathname === href
+                                            ? "bg-pink-400/20 text-pink-300 font-medium"
+                                            : "text-white/50 hover:bg-white/10 hover:text-white/80"
+                                        }`}
+                                    >
+                                      <i className={`${icon} text-xs`}></i>
+                                      {label}
+                                    </div>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+
+                        {/* Field Agents */}
+                        <li>
+                          <div
+                            onClick={() => setFieldAgentsOpen(!fieldAgentsOpen)}
+                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all text-white/60 hover:bg-white/10 hover:text-white"
+                          >
+                            <div className="flex items-center gap-2">
+                              <i className="bi bi-person-badge text-xs"></i>
+                              Field Agents
+                            </div>
+                            <i className={`bi bi-chevron-${fieldAgentsOpen ? 'down' : 'right'} text-xs transition-transform`}></i>
+                          </div>
+                          {fieldAgentsOpen && (
+                            <ul className="mt-1 ml-2 space-y-1">
+                              {jamboLushStructure.users.fieldAgents.map(({ href, label, icon }) => (
+                                <li key={href}>
+                                  <Link href={href}>
+                                    <div
+                                      onClick={() => setIsOpen(false)}
+                                      className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs cursor-pointer transition-all
+                                        ${
+                                          pathname === href
+                                            ? "bg-pink-400/20 text-pink-300 font-medium"
+                                            : "text-white/50 hover:bg-white/10 hover:text-white/80"
+                                        }`}
+                                    >
+                                      <i className={`${icon} text-xs`}></i>
+                                      {label}
+                                    </div>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+
+                        {/* Admins */}
+                        <li>
+                          <div
+                            onClick={() => setAdminsOpen(!adminsOpen)}
+                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all text-white/60 hover:bg-white/10 hover:text-white"
+                          >
+                            <div className="flex items-center gap-2">
+                              <i className="bi bi-shield-check text-xs"></i>
+                              Admins
+                            </div>
+                            <i className={`bi bi-chevron-${adminsOpen ? 'down' : 'right'} text-xs transition-transform`}></i>
+                          </div>
+                          {adminsOpen && (
+                            <ul className="mt-1 ml-2 space-y-1">
+                              {jamboLushStructure.users.admins.map(({ href, label, icon }) => (
+                                <li key={href}>
+                                  <Link href={href}>
+                                    <div
+                                      onClick={() => setIsOpen(false)}
+                                      className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs cursor-pointer transition-all
+                                        ${
+                                          pathname === href
+                                            ? "bg-pink-400/20 text-pink-300 font-medium"
+                                            : "text-white/50 hover:bg-white/10 hover:text-white/80"
+                                        }`}
+                                    >
+                                      <i className={`${icon} text-xs`}></i>
+                                      {label}
+                                    </div>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+
+                        {/* Guests */}
+                        <li>
+                          <div
+                            onClick={() => setGuestsOpen(!guestsOpen)}
+                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all text-white/60 hover:bg-white/10 hover:text-white"
+                          >
+                            <div className="flex items-center gap-2">
+                              <i className="bi bi-person-heart text-xs"></i>
+                              Guests
+                            </div>
+                            <i className={`bi bi-chevron-${guestsOpen ? 'down' : 'right'} text-xs transition-transform`}></i>
+                          </div>
+                          {guestsOpen && (
+                            <ul className="mt-1 ml-2 space-y-1">
+                              {jamboLushStructure.users.guests.map(({ href, label, icon }) => (
+                                <li key={href}>
+                                  <Link href={href}>
+                                    <div
+                                      onClick={() => setIsOpen(false)}
+                                      className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs cursor-pointer transition-all
+                                        ${
+                                          pathname === href
+                                            ? "bg-pink-400/20 text-pink-300 font-medium"
+                                            : "text-white/50 hover:bg-white/10 hover:text-white/80"
+                                        }`}
+                                    >
+                                      <i className={`${icon} text-xs`}></i>
+                                      {label}
+                                    </div>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+
+                        {/* Tour Guides */}
+                        <li>
+                          <div
+                            onClick={() => setTourGuidesOpen(!tourGuidesOpen)}
+                            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all text-white/60 hover:bg-white/10 hover:text-white"
+                          >
+                            <div className="flex items-center gap-2">
+                              <i className="bi bi-compass text-xs"></i>
+                              Tour Guides
+                            </div>
+                            <i className={`bi bi-chevron-${tourGuidesOpen ? 'down' : 'right'} text-xs transition-transform`}></i>
+                          </div>
+                          {tourGuidesOpen && (
+                            <ul className="mt-1 ml-2 space-y-1">
+                              {jamboLushStructure.users.tourGuides.map(({ href, label, icon }) => (
+                                <li key={href}>
+                                  <Link href={href}>
+                                    <div
+                                      onClick={() => setIsOpen(false)}
+                                      className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs cursor-pointer transition-all
+                                        ${
+                                          pathname === href
+                                            ? "bg-pink-400/20 text-pink-300 font-medium"
+                                            : "text-white/50 hover:bg-white/10 hover:text-white/80"
+                                        }`}
+                                    >
+                                      <i className={`${icon} text-xs`}></i>
+                                      {label}
+                                    </div>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      </ul>
+                    )}
+                  </li>
+
+                  {/* Direct JamboLush Items */}
+                  {jamboLushStructure.direct.map(({ href, label, icon }) => (
+                    <li key={href}>
+                      <Link href={href}>
+                        <div
+                          onClick={() => setIsOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all
+                            ${
+                              pathname === href
+                                ? "bg-pink-400/20 text-pink-300 font-semibold"
+                                : "text-white/70 hover:bg-white/10 hover:text-white"
+                            }`}
+                        >
+                          <i className={`${icon} text-sm`}></i>
+                          {label}
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
           </ul>
 
           {/* User Actions */}
