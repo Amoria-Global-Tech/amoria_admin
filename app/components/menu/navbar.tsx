@@ -65,8 +65,8 @@ export default function Navbar() {
       ]
     },
     direct: [
-      { href: "/jambolush/support", label: "Support", icon: "bi bi-headset" },
-      { href: "/jambolush/settings", label: "Settings", icon: "bi bi-gear" }
+      { href: "/support", label: "Support", icon: "bi bi-headset" },
+      { href: "/setting", label: "Settings", icon: "bi bi-gear" }
     ]
   };
 

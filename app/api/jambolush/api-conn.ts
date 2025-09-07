@@ -1,8 +1,8 @@
 // api-conn.ts - Centralized API Connector
 // All frontend requests should go through this single file
 
-// Configuration
-const PUBLIC_API_ENDPOINT_URL = 'http://localhost:5000/api';
+// Configuration - Fixed for Next.js API routes
+const PUBLIC_API_ENDPOINT_URL = '/api'; // Changed from 'http://localhost:5000/api'
 
 // Types and Interfaces
 export interface ApiResponse<T = any> {
@@ -434,47 +434,3 @@ export const api = {
   getErrorLogs: () => logger.getErrorLogs(),
   getLogsByEndpoint: (endpoint: string) => logger.getLogsByEndpoint(endpoint),
 };
-
-// Example usage and documentation
-/*
-USAGE EXAMPLES:
-
-// Import in your components
-import { api } from './api-conn';
-
-// GET request
-const response = await api.get('/users', { page: 1, limit: 10 });
-if (response.success) {
-  console.log(response.data);
-} else {
-  console.error(response.error);
-}
-
-// POST request
-const createUser = await api.post('/users', {
-  name: 'John Doe',
-  email: 'john@example.com'
-});
-
-// PUT request
-const updateUser = await api.put('/users/123', {
-  name: 'Jane Doe'
-});
-
-// DELETE request
-const deleteUser = await api.delete('/users/123');
-
-// File upload
-const fileUpload = await api.upload('/upload', fileObject);
-
-// Health check
-const health = await api.healthCheck();
-
-// Access logs
-const allLogs = api.getLogs();
-const errorLogs = api.getErrorLogs();
-const userLogs = api.getLogsByEndpoint('/users');
-
-// Clear logs
-api.clearLogs();
-*/
