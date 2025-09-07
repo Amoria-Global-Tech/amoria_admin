@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '../../../api/jambolush/api-conn'; // Correct import path
 
 interface Payment {
   id: number;
@@ -15,7 +16,7 @@ interface Payment {
   tourTitle?: string;
 }
 
-// Payment Details Modal Component
+// Payment Details Modal Component (No changes needed here)
 const PaymentDetailsModal = ({ isOpen, onClose, payment }: {
   isOpen: boolean;
   onClose: () => void;
@@ -177,7 +178,7 @@ const PaymentDetailsModal = ({ isOpen, onClose, payment }: {
   );
 };
 
-// Process Payment Modal Component
+// Process Payment Modal Component (No changes needed here)
 const ProcessPaymentModal = ({ isOpen, onClose, payment, onProcessPayment }: {
   isOpen: boolean;
   onClose: () => void;
@@ -308,6 +309,7 @@ const ProcessPaymentModal = ({ isOpen, onClose, payment, onProcessPayment }: {
   );
 };
 
+
 // Main Payment Dashboard Component
 export default function PaymentAdminDashboard() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -321,65 +323,37 @@ export default function PaymentAdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
 
-  useEffect(() => {
-    // Initialize with sample data
-    setSampleData();
-  }, []);
+  // Fetches payments from the API based on current filters
+  const fetchPayments = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params: Record<string, string> = {};
+      if (searchTerm) params.q = searchTerm;
+      if (selectedStatus !== 'all') params.status = selectedStatus;
+      if (dateRange.start) params.startDate = dateRange.start;
+      if (dateRange.end) params.endDate = dateRange.end;
 
-  const setSampleData = () => {
-    const samplePayments: Payment[] = [
-      {
-        id: 1,
-        amount: 250.00,
-        currency: "USD",
-        status: "pending",
-        transactionId: "TXN001234",
-        paymentMethod: "Bank Transfer",
-        dateCreated: "2024-01-15T10:30:00Z",
-        description: "Tour guide payment for City Walking Tour",
-        tourTitle: "Historic City Walking Tour"
-      },
-      {
-        id: 2,
-        amount: 180.00,
-        currency: "USD",
-        status: "completed",
-        transactionId: "TXN001235",
-        paymentMethod: "PayPal",
-        dateCreated: "2024-01-14T14:20:00Z",
-        dateProcessed: "2024-01-14T16:45:00Z",
-        description: "Tour guide payment for Museum Tour",
-        tourTitle: "Art Museum Guided Tour"
-      },
-      {
-        id: 3,
-        amount: 40000.00,
-        currency: "frw",
-        status: "failed",
-        transactionId: "TXN001236",
-        paymentMethod: "Bank Transfer",
-        dateCreated: "2024-01-13T09:15:00Z",
-        description: "Tour guide payment for Adventure Tour",
-        tourTitle: "Mountain Adventure Tour"
-      },
+      const response = await api.get<Payment[]>('/payments', params);
 
-      {
-        id: 4,
-        amount: 300.00,
-        currency: "USD",
-        status: "completed",
-        transactionId: "TXN001237",
-        paymentMethod: "Credit Card",
-        dateCreated: "2024-01-12T11:00:00Z",
-        dateProcessed: "2024-01-12T13:30:00Z",
-        description: "Tour guide payment for Food Tasting Tour",
-        tourTitle: "Gourmet Food Tasting Tour"
+      if (response.success && response.data) {
+        setPayments(response.data);
+      } else {
+        setError(response.error || 'Failed to fetch payments.');
+        setPayments([]); // Clear payments on error
       }
-      ,
-    ];
-    setPayments(samplePayments);
-    setLoading(false);
-  };
+    } catch (err) {
+      setError('An unexpected error occurred. Please check your connection.');
+      setPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm, selectedStatus, dateRange]);
+
+  // Initial data fetch and re-fetch when filters change
+  useEffect(() => {
+    fetchPayments();
+  }, [fetchPayments]);
 
   const handleViewPayment = (payment: Payment) => {
     setSelectedPayment(payment);
@@ -394,21 +368,24 @@ export default function PaymentAdminDashboard() {
   const handleUpdatePaymentStatus = async (paymentId: number, newStatus: string, transactionId?: string) => {
     setIsProcessing(paymentId);
     try {
-      // Update payment in state (replace with actual API call later)
-      setPayments(prevPayments => 
-        prevPayments.map(p => 
-          p.id === paymentId 
-            ? { ...p, status: newStatus as any, dateProcessed: new Date().toISOString(), transactionId: transactionId || p.transactionId }
-            : p
-        )
-      );
+      // Use the API to update the payment status
+      const response = await api.put(`/payments/${paymentId}/status`, {
+        status: newStatus,
+        transactionId: transactionId,
+      });
 
-      alert(`Payment ${newStatus} successfully`);
+      if (response.success) {
+        alert(`Payment ${newStatus} successfully`);
+        await fetchPayments(); // Refresh the list to show the update
+      } else {
+        throw new Error(response.error || 'Failed to update payment');
+      }
     } catch (error) {
       console.error('Error updating payment:', error);
       alert(error instanceof Error ? error.message : 'Failed to update payment');
     } finally {
       setIsProcessing(null);
+      setIsProcessModalOpen(false);
     }
   };
 
@@ -417,56 +394,47 @@ export default function PaymentAdminDashboard() {
   };
 
   const refreshPayments = () => {
-    setSampleData();
+    fetchPayments(); // Simply call fetchPayments to refresh
   };
 
   const handleExportReport = () => {
-    const csvContent = generateCSVReport(filteredPayments);
+    const csvContent = generateCSVReport(payments); // Use current payments state
     downloadCSV(csvContent, 'payment-report.csv');
   };
 
-  const generateCSVReport = (payments: Payment[]) => {
-    const headers = ['ID', 'Amount', 'Status', 'Date Created', 'Date Processed', 'Transaction ID'];
+  // The generateCSVReport and downloadCSV functions remain unchanged
+  const generateCSVReport = (paymentsToExport: Payment[]) => {
+    const headers = ['ID', 'Amount', 'Status', 'Date Created', 'Date Processed', 'Transaction ID', 'Tour Title'];
     const csvRows = [
       headers.join(','),
-      ...payments.map(p => [
+      ...paymentsToExport.map(p => [
         p.id,
         `${p.currency} ${p.amount}`,
         p.status,
         p.dateCreated,
         p.dateProcessed || 'N/A',
-        p.transactionId
+        `"${p.transactionId}"`, // Enclose in quotes for safety
+        `"${p.tourTitle || 'N/A'}"`
       ].join(','))
     ];
     return csvRows.join('\n');
   };
 
   const downloadCSV = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/csv' });
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-
-  const statuses = ['all', 'pending', 'completed', 'failed'];
-
-  const filteredPayments = payments.filter(payment => {
-    const matchesSearch = payment.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (payment.tourTitle && payment.tourTitle.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesStatus = selectedStatus === 'all' || payment.status === selectedStatus;
-    
-    let matchesDateRange = true;
-    if (dateRange.start || dateRange.end) {
-      const paymentDate = new Date(payment.dateCreated);
-      if (dateRange.start && paymentDate < new Date(dateRange.start)) matchesDateRange = false;
-      if (dateRange.end && paymentDate > new Date(dateRange.end)) matchesDateRange = false;
-    }
-    
-    return matchesSearch && matchesStatus && matchesDateRange;
-  });
+  
+  // Note: The filtering logic is now handled by the backend via API params.
+  // The 'filteredPayments' variable is no longer needed as the `payments` state
+  // directly reflects the filtered data from the server.
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -485,6 +453,8 @@ export default function PaymentAdminDashboard() {
       default: return 'bi-question-circle';
     }
   };
+
+  const statuses = ['all', 'pending', 'completed', 'failed'];
 
   return (
     <>
@@ -512,7 +482,7 @@ export default function PaymentAdminDashboard() {
               
               <button
                 onClick={handleExportReport}
-                className="bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white px-4 py-2 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 cursor-pointer"
+                className="bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white px-4 py-2 rounded-xl font-semibold shadow-lg hover:show-xl transition-all duration-300 flex items-center gap-2 cursor-pointer"
               >
                 <i className="bi bi-download text-lg"></i>
                 Download Report
@@ -536,6 +506,7 @@ export default function PaymentAdminDashboard() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          {/* These stats can be derived from the fetched payments or from a separate API endpoint */}
           <div className="bg-gradient-to-br from-[#0b1c36] to-[#13294b] bg-opacity-80 backdrop-blur-xl border border-blue-900/20 shadow-xl rounded-xl p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -590,7 +561,7 @@ export default function PaymentAdminDashboard() {
             </div>
           </div>
         </div>
-
+        
         {/* Search and Filter */}
         <div className="bg-gradient-to-r from-[#0b1c36] to-[#13294b] bg-opacity-90 backdrop-blur-xl border border-blue-900/20 shadow-xl rounded-2xl p-6 mb-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -644,7 +615,7 @@ export default function PaymentAdminDashboard() {
                 ))}
               </div>
             </div>
-          ) : filteredPayments.length > 0 ? (
+          ) : payments.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-white/5 border-b border-white/10">
@@ -658,7 +629,7 @@ export default function PaymentAdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPayments.map((payment) => (
+                  {payments.map((payment) => (
                     <tr key={payment.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                       <td className="p-4">
                         <div>
