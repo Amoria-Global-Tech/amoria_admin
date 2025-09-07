@@ -49,7 +49,6 @@ export default function Navbar() {
         { href: "/jambolush/agents/properties", label: "Properties", icon: "bi bi-house" }
       ],
       admins: [
-        { href: "/jambolush/admins/payments", label: "Payments", icon: "bi bi-credit-card" },
         { href: "/jambolush/admins/analytics", label: "Analytics", icon: "bi bi-graph-up" }
       ],
       guests: [
