@@ -27,6 +27,7 @@ export default function Navbar() {
   const [adminsOpen, setAdminsOpen] = useState(false);
   const [guestsOpen, setGuestsOpen] = useState(false);
   const [tourGuidesOpen, setTourGuidesOpen] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false); // state for Accounts dropdown
 
   const navItems = [
     { href: "/", label: "Overview", icon: "bi bi-bar-chart-line" },
@@ -63,29 +64,49 @@ export default function Navbar() {
         { href: "/jambolush/tour-guides/tours", label: "Tours", icon: "bi bi-map" }
       ]
     },
+    // Accounts section for account management
+    accounts: [
+      { href: "/jambolush/accounts/hosts", label: "Hosts", icon: "bi bi-house-door" },
+      { href: "/jambolush/accounts/field-agents", label: "Field Agents", icon: "bi bi-person-badge" },
+      { href: "/jambolush/accounts/guests", label: "Guests", icon: "bi bi-person-heart" },
+      { href: "/jambolush/accounts/tour-guides", label: "Tour Guides", icon: "bi bi-compass" },
+      { href: "/jambolush/accounts/admins", label: "Admins", icon: "bi bi-shield-check" },
+    ],
     direct: [
       { href: "/support", label: "Support", icon: "bi bi-headset" },
       { href: "/setting", label: "Settings", icon: "bi bi-gear" }
     ]
   };
 
-  // Check if current path is within JamboLush section
-  const isJamboLushPath = pathname.startsWith('/jambolush') || pathname === '/JamboLush';
+  // Check if current path is within JamboLush sections
+  const isJamboLushPath = pathname.startsWith('/jambolush');
+  const isAccountsPath = pathname.startsWith('/jambolush/accounts');
+  const isUsersPath = !isAccountsPath && (
+    pathname.includes('/hosts') || 
+    pathname.includes('/agents') || 
+    pathname.includes('/admins') || 
+    pathname.includes('/guests') || 
+    pathname.includes('/tour-guides')
+  );
+
 
   // Auto-expand dropdowns based on current path
   useEffect(() => {
     if (pathname.startsWith('/jambolush')) {
       setJamboLushOpen(true);
-      if (pathname.includes('/users/')) {
+      if (isUsersPath) {
         setUsersOpen(true);
-        if (pathname.includes('/hosts/')) setHostsOpen(true);
-        if (pathname.includes('/field-agents/')) setFieldAgentsOpen(true);
-        if (pathname.includes('/admins/')) setAdminsOpen(true);
-        if (pathname.includes('/guests/')) setGuestsOpen(true);
-        if (pathname.includes('/tour-guides/')) setTourGuidesOpen(true);
+        if (pathname.includes('/hosts')) setHostsOpen(true);
+        if (pathname.includes('/agents')) setFieldAgentsOpen(true);
+        if (pathname.includes('/admins')) setAdminsOpen(true);
+        if (pathname.includes('/guests')) setGuestsOpen(true);
+        if (pathname.includes('/tour-guides')) setTourGuidesOpen(true);
+      }
+      if (isAccountsPath) {
+        setAccountsOpen(true);
       }
     }
-  }, [pathname]);
+  }, [pathname, isUsersPath, isAccountsPath]);
 
   // Fetch unread messages count
   const fetchUnreadCount = async () => {
@@ -360,7 +381,9 @@ export default function Navbar() {
                   <li>
                     <div
                       onClick={() => setUsersOpen(!usersOpen)}
-                      className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all text-white/70 hover:bg-white/10 hover:text-white"
+                      className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all 
+                        ${ isUsersPath ? "text-white" : "text-white/70" } 
+                        hover:bg-white/10 hover:text-white`}
                     >
                       <div className="flex items-center gap-3">
                         <i className="bi bi-people text-sm"></i>
@@ -551,6 +574,45 @@ export default function Navbar() {
                             </ul>
                           )}
                         </li>
+                      </ul>
+                    )}
+                  </li>
+
+                  {/*  Accounts Dropdown */}
+                  <li>
+                    <div
+                      onClick={() => setAccountsOpen(!accountsOpen)}
+                       className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all 
+                        ${ isUsersPath ? "text-white" : "text-white/70" } 
+                        hover:bg-white/10 hover:text-white`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <i className="bi bi-person-lines-fill text-sm"></i>
+                        Accounts
+                      </div>
+                      <i className={`bi bi-chevron-${accountsOpen ? 'down' : 'right'} text-xs transition-transform`}></i>
+                    </div>
+
+                    {accountsOpen && (
+                      <ul className="mt-1 ml-3 space-y-1 border-l border-white/10 pl-3">
+                        {jamboLushStructure.accounts.map(({ href, label, icon }) => (
+                          <li key={href}>
+                            <Link href={href}>
+                              <div
+                                onClick={() => setIsOpen(false)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs cursor-pointer transition-all
+                                  ${
+                                    pathname === href
+                                      ? "bg-pink-400/20 text-pink-300 font-medium"
+                                      : "text-white/60 hover:bg-white/10 hover:text-white/80"
+                                  }`}
+                              >
+                                <i className={`${icon} text-xs`}></i>
+                                {label}
+                              </div>
+                            </Link>
+                          </li>
+                        ))}
                       </ul>
                     )}
                   </li>
