@@ -1,4 +1,4 @@
-// app/api/auth/resend-otp/route.ts
+// app/api/auth/send-otp/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOTPEmail } from '../../utils/brevo';
@@ -32,23 +32,31 @@ export async function POST(request: NextRequest) {
 
     // Send OTP email using Brevo
     try {
-      await sendOTPEmail(adminUser.email, adminUser.full_name, otp, true);
+      await sendOTPEmail(adminUser.email, adminUser.full_name, otp, false);
     } catch (emailError) {
-      console.error('Failed to resend OTP email:', emailError);
+      console.error('Failed to send OTP email:', emailError);
       return NextResponse.json(
-        { success: false, message: 'Failed to resend OTP email. Please try again.' },
+        { success: false, message: 'Failed to send OTP email. Please try again.' },
         { status: 500 }
       );
     }
 
+    // Create masked email for frontend display
+    const emailParts = adminUser.email.split('@');
+    const maskedEmail = emailParts[0].length > 2 
+      ? emailParts[0].substring(0, 2) + '***@' + emailParts[1]
+      : '***@' + emailParts[1];
+
     return NextResponse.json({
       success: true,
-      message: 'OTP resent successfully',
+      message: 'OTP sent successfully',
+      maskedEmail: maskedEmail,
+      email: adminUser.email,
       expirationMinutes: 2 // OTP expires in 2 minutes
     });
 
   } catch (error) {
-    console.error('Resend OTP error:', error);
+    console.error('Send OTP error:', error);
     
     return NextResponse.json(
       { success: false, message: 'Internal server error' },

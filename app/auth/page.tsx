@@ -2,35 +2,54 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import api from "@/app/api/conn"; // Assuming you have your API instance here
 
-interface LoginFormData {
-  username: string;
+interface EmailFormData {
+  email: string;
 }
 
 interface OTPFormData {
   otp: string;
 }
 
-type AuthStep = 'username' | 'otp';
+interface PasswordFormData {
+  password: string;
+}
+
+type AuthStep = 'email' | 'otp' | 'password';
 
 // Function to generate 6-digit OTP on frontend
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-export default function AuthPage() {
+export default function AdminAuthPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<AuthStep>('username');
-  const [loginData, setLoginData] = useState<LoginFormData>({ username: "" });
+  const [currentStep, setCurrentStep] = useState<AuthStep>('email');
+  const [emailData, setEmailData] = useState<EmailFormData>({ email: "" });
   const [otpData, setOTPData] = useState<OTPFormData>({ otp: "" });
+  const [passwordData, setPasswordData] = useState<PasswordFormData>({ password: "" });
   const [generatedOTP, setGeneratedOTP] = useState<string>("");
   const [maskedEmail, setMaskedEmail] = useState<string>("");
-  const [userEmail, setUserEmail] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLoginData({ username: e.target.value });
+  // Function to check if user exists and has password
+  const checkUserStatus = async (email: string) => {
+    try {
+      const response = await api.get(`/auth/check-email/${encodeURIComponent(email)}`);
+      return response.data.data; // Return the full response data structure
+    } catch (error: any) {
+      // If user doesn't exist, API might return 404
+      if (error.response?.status === 404) {
+        return { success: false, exists: false };
+      }
+      throw error;
+    }
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmailData({ email: e.target.value });
     setError(null);
   };
 
@@ -42,7 +61,12 @@ export default function AuthPage() {
     }
   };
 
-  const handleUsernameSubmit = async (e: React.FormEvent) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPasswordData({ password: e.target.value });
+    setError(null);
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
@@ -52,13 +76,23 @@ export default function AuthPage() {
     setGeneratedOTP(otp);
 
     try {
-      const response = await fetch('/api/auth/check-username', {
+      // Check if email exists
+      const userStatus = await checkUserStatus(emailData.email);
+      
+      if (!userStatus.exists || userStatus.userType !== 'admin') {
+        setError('Email not found. Please check and try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // If user exists, send OTP using your current send OTP endpoint
+      const response = await fetch('/api/auth/send-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          username: loginData.username,
+          email: emailData.email,
           otp: otp // Send generated OTP to backend for email sending
         }),
       });
@@ -66,18 +100,17 @@ export default function AuthPage() {
       const result = await response.json();
 
       if (result.success) {
-        setMaskedEmail(result.maskedEmail);
-        setUserEmail(result.email);
+        setMaskedEmail(result.maskedEmail || emailData.email);
         // Save email to localStorage
-        localStorage.setItem('userEmail', result.email);
+        localStorage.setItem('userEmail', emailData.email);
         localStorage.setItem('authOTP', otp); // Store OTP for verification
         localStorage.setItem('otpTimestamp', Date.now().toString()); // Store timestamp
         setCurrentStep('otp');
       } else {
-        setError(result.message || 'Username not found. Please check and try again.');
+        setError(result.message || 'Failed to send OTP. Please try again.');
       }
-    } catch (err) {
-      setError('Network error. Please check your connection and try again.');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -100,7 +133,7 @@ export default function AuthPage() {
 
     // Check if OTP has expired (10 minutes)
     const otpAge = Date.now() - parseInt(otpTimestamp);
-    if (otpAge > 10 * 60 * 1000) {
+    if (otpAge > 2 * 60 * 1000) {
       setError('OTP has expired. Please request a new code.');
       localStorage.removeItem('authOTP');
       localStorage.removeItem('otpTimestamp');
@@ -115,41 +148,41 @@ export default function AuthPage() {
       return;
     }
 
+    // OTP verified, proceed to password step
+    setCurrentStep('password');
+    setIsSubmitting(false);
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
     try {
-      const response = await fetch('/api/auth/verify-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          username: loginData.username,
-          otp: otpData.otp,
-          email: userEmail
-        }),
+      const response = await api.post('/auth/login', {
+        email: emailData.email,
+        password: passwordData.password
       });
 
-      const result = await response.json();
-
-      if (result.success) {
-        // Store authentication data in localStorage
-        if (result.authData) {
-          localStorage.setItem('authenticated', result.authData.authenticated);
-          localStorage.setItem('authToken', result.authData.authToken);
-          localStorage.setItem('userInfo', JSON.stringify(result.authData.userInfo));
-        }
+      if (response.data.user) {
+        const { accessToken, refreshToken } = response.data;
+        
+        // Store tokens in localStorage
+        localStorage.setItem('authToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
         
         // Clear temporary OTP data
         localStorage.removeItem('userEmail');
         localStorage.removeItem('authOTP');
         localStorage.removeItem('otpTimestamp');
         
-        // Redirect to home page
+        // Redirect to admin dashboard
         router.push('/');
       } else {
-        setError(result.message || 'Login failed. Please try again.');
+        setError(response.data.message || 'Invalid credentials. Please try again.');
       }
-    } catch (err) {
-      setError('Network error. Please check your connection and try again.');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Login failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -170,9 +203,8 @@ export default function AuthPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          username: loginData.username,
-          otp: newOTP,
-          email: userEmail
+          email: emailData.email,
+          otp: newOTP
         }),
       });
 
@@ -192,16 +224,22 @@ export default function AuthPage() {
     }
   };
 
-  const handleBackToUsername = () => {
-    setCurrentStep('username');
+  const handleBackToEmail = () => {
+    setCurrentStep('email');
     setOTPData({ otp: "" });
+    setPasswordData({ password: "" });
     setGeneratedOTP("");
     setMaskedEmail("");
-    setUserEmail("");
     setError(null);
     localStorage.removeItem('userEmail');
     localStorage.removeItem('authOTP');
     localStorage.removeItem('otpTimestamp');
+  };
+
+  const handleBackToOTP = () => {
+    setCurrentStep('otp');
+    setPasswordData({ password: "" });
+    setError(null);
   };
 
   return (
@@ -215,12 +253,15 @@ export default function AuthPage() {
               <i className="bi bi-shield-lock text-white text-2xl"></i>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              {currentStep === 'username' ? 'Welcome Back' : 'Verify Your Identity'}
+              {currentStep === 'email' ? 'Admin Login' : 
+               currentStep === 'otp' ? 'Verify Your Identity' : 'Enter Password'}
             </h1>
             <p className="text-white/70">
-              {currentStep === 'username' 
-                ? 'Enter your username to continue' 
-                : `We've sent a verification code to ${maskedEmail}`
+              {currentStep === 'email' 
+                ? 'Enter your email address to continue' 
+                : currentStep === 'otp'
+                ? `We've sent a verification code to ${maskedEmail}`
+                : 'Enter your password to complete login'
               }
             </p>
           </div>
@@ -235,35 +276,35 @@ export default function AuthPage() {
             </div>
           )}
 
-          {/* Username Step */}
-          {currentStep === 'username' && (
-            <form onSubmit={handleUsernameSubmit} className="space-y-6">
+          {/* Email Step */}
+          {currentStep === 'email' && (
+            <form onSubmit={handleEmailSubmit} className="space-y-6">
               <div>
-                <label htmlFor="username" className="block text-white/80 text-sm font-semibold mb-2">
-                  Username
+                <label htmlFor="email" className="block text-white/80 text-sm font-semibold mb-2">
+                  Email Address
                 </label>
                 <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  value={loginData.username}
-                  onChange={handleUsernameChange}
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={emailData.email}
+                  onChange={handleEmailChange}
                   required
                   className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 transition-all"
-                  placeholder="Enter your username"
+                  placeholder="Enter your email address"
                   disabled={isSubmitting}
                 />
               </div>
 
               <button
                 type="submit"
-                disabled={isSubmitting || !loginData.username.trim()}
+                disabled={isSubmitting || !emailData.email.trim()}
                 className="w-full bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
               >
                 {isSubmitting ? (
                   <>
                     <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></div>
-                    Verifying...
+                    Checking...
                   </>
                 ) : (
                   <>
@@ -313,7 +354,7 @@ export default function AuthPage() {
                   ) : (
                     <>
                       <i className="bi bi-check-circle text-lg"></i>
-                      Verify & Login
+                      Verify Code
                     </>
                   )}
                 </button>
@@ -331,12 +372,66 @@ export default function AuthPage() {
                 </button>
                 
                 <button
-                  onClick={handleBackToUsername}
+                  onClick={handleBackToEmail}
                   disabled={isSubmitting}
                   className="text-white/50 hover:text-white/70 text-sm font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   <i className="bi bi-arrow-left"></i>
-                  Back to username
+                  Back to email
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Password Step */}
+          {currentStep === 'password' && (
+            <div className="space-y-6">
+              <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                <div>
+                  <label htmlFor="password" className="block text-white/80 text-sm font-semibold mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={passwordData.password}
+                    onChange={handlePasswordChange}
+                    required
+                    className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/60 focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 transition-all"
+                    placeholder="Enter your password"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !passwordData.password.trim()}
+                  className="w-full bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-3"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></div>
+                      Logging in...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-box-arrow-in-right text-lg"></i>
+                      Login to Admin
+                    </>
+                  )}
+                </button>
+              </form>
+
+              {/* Password Actions */}
+              <div className="flex flex-col gap-3 pt-4 border-t border-white/10">
+                <button
+                  onClick={handleBackToOTP}
+                  disabled={isSubmitting}
+                  className="text-white/50 hover:text-white/70 text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <i className="bi bi-arrow-left"></i>
+                  Back to OTP verification
                 </button>
               </div>
             </div>
@@ -345,7 +440,7 @@ export default function AuthPage() {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t border-white/10">
             <p className="text-white/50 text-xs text-center">
-              Secure login powered by Amoria
+              Secure admin login powered by Amoria
             </p>
           </div>
         </div>
