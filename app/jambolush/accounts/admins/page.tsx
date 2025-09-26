@@ -88,7 +88,7 @@ const LogModal: React.FC<{ admin: Admin | null; onClose: () => void; }> = ({ adm
           </div>
           <div className="bg-slate-800/50 p-4 rounded-md h-64 overflow-y-auto">
             <p className="text-white/70 text-sm font-mono">[2025-09-08 08:15] User logged in.</p>
-            <p className="text-white/70 text-sm font-mono">[2025-09-07 14:20] Updated user profile 'Bob W'.</p>
+            <p className="text-white/70 text-sm font-mono">[2025-09-07 14:20] Updated user profile &apos;Bob W&apos;.</p>
             <p className="text-white/60 mt-4">This is a placeholder for a real activity log feed.</p>
           </div>
         </div>

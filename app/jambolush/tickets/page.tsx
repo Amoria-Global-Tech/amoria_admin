@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
-import { api } from '../../../api/jambolush/api-conn'; 
+import { api } from '../../api/jambolush/api-conn'; 
 
 // Types
 interface Reply {
