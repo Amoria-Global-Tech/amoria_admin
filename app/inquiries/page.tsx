@@ -81,8 +81,11 @@ export default function MessagesPage() {
 
     try {
       // Send email reply via API
-      const response = await api.post('/admin/content/contacts/${selectedMessage.id}/respond', {
-        response: replyData.message
+      const response = await api.post('/admin/content/contacts', {
+        messageId: selectedMessage.id,
+        to: selectedMessage.email,
+        subject: replyData.subject,
+        message: replyData.message
       }
       );
 

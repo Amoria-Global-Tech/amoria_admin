@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Upload, Image as ImageIcon, DollarSign, Tag, FileText } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, DollarSign, Tag, FileText, Globe } from 'lucide-react';
+import api from "@/app/api/conn";
 import AlertNotification from '../menu/notify';
+import { uploadProductImage } from '@/app/api/utils/storage';
 
 interface Product {
   name: string;
@@ -10,7 +12,8 @@ interface Product {
   price: number | any;
   image: File | null | any;
   category: string;
-  is_available: boolean;
+  siteUrl: string;
+  isAvailable: boolean;
 }
 
 interface AddProductModalProps {
@@ -26,13 +29,15 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
     price: 0,
     image: null,
     category: '',
-    is_available: true
+    siteUrl: '',
+    isAvailable: true
   });
 
   const [errors, setErrors] = useState<Partial<Product>>({});
   const [result, setResult] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categories = [
@@ -67,7 +72,7 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
     if (result) {
       const timer = setTimeout(() => {
         setResult(null);
-      }, 10000); // Hide after 10 seconds
+      }, 10000);
       return () => clearTimeout(timer);
     }
   }, [result]);
@@ -93,12 +98,22 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
       newErrors.category = 'Category is required';
     }
 
-    // Validate image file if provided
+    if (!formData.siteUrl.trim()) {
+      newErrors.siteUrl = 'Site URL is required';
+    } else {
+      // Validate URL format
+      try {
+        new URL(formData.siteUrl);
+      } catch {
+        newErrors.siteUrl = 'Please enter a valid URL (e.g., https://example.com)';
+      }
+    }
+
     if (formData.image) {
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(formData.image.type)) {
         newErrors.image = 'Image must be JPEG, PNG, or WebP format';
-      } else if (formData.image.size > 5 * 1024 * 1024) { // 5MB limit
+      } else if (formData.image.size > 5 * 1024 * 1024) {
         newErrors.image = 'Image must be less than 5MB';
       }
     }
@@ -112,14 +127,12 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
     if (file) {
       setFormData(prev => ({ ...prev, image: file }));
       
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
 
-      // Clear any existing image error
       if (errors.image) {
         setErrors(prev => ({ ...prev, image: undefined }));
       }
@@ -142,39 +155,54 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
     setIsSubmitting(true);
 
     try {
-      // Create FormData for multipart/form-data
-      const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('price', formData.price.toString());
-      formDataToSend.append('category', formData.category);
-      formDataToSend.append('is_available', formData.is_available.toString());
-      
+      let imageUrl = '';
+
+      // Upload image to Supabase if provided
       if (formData.image) {
-        formDataToSend.append('image', formData.image);
+        setUploadingImage(true);
+        const uploadResult = await uploadProductImage(formData.image, formData.name);
+        setUploadingImage(false);
+
+        if (!uploadResult.success) {
+          setResult(`Image upload failed: ${uploadResult.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+
+        imageUrl = uploadResult.url || '';
       }
 
-      // Make API call
-      const response = await fetch('/api/blog/products/add', {
-        method: 'POST',
-        body: formDataToSend,
-      });
+      // Prepare data for backend API
+      const productData = {
+        name: formData.name,
+        description: formData.description,
+        price: formData.price,
+        category: formData.category,
+        imageUrl: imageUrl,
+        siteUrl: formData.siteUrl,
+        isAvailable: formData.isAvailable !== false
+      };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        setResult(errorData.message || 'Failed to add product');
-        return;
+      const response = await api.post('/admin/content/products', productData);
+
+      if (response.ok) {
+        const result = await response.data;
+        if (result.success) {
+          setResult("Product added successfully");
+          onAddProduct(result.data);
+          handleClose();
+        } else {
+          setResult(result.error || 'Failed to add product');
+        }
+      } else {
+        setResult('Failed to add product');
       }
-
-      const result = await response.json();
-      setResult("Product added successfully");
-      onAddProduct(result.product || result);
-      handleClose();
     } catch (error) {
       console.error('Error adding product:', error);
       setResult(`Error adding product: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
+      setUploadingImage(false);
     }
   };
 
@@ -185,7 +213,8 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
       price: 0,
       image: null,
       category: '',
-      is_available: true
+      siteUrl: '',
+      isAvailable: true
     });
     setErrors({});
     setImagePreview('');
@@ -206,24 +235,22 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-      {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={handleClose}
       />
       {result && <AlertNotification message={result} type={result.includes('success') ? 'success':'error'}/>}
       
-      {/* Modal */}
-      <div className="relative w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
+      <div className="relative w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden overflow-y-visible">
         <div className="bg-gradient-to-b from-[#0b1c36] to-[#13294b] bg-opacity-95 backdrop-blur-xl border border-blue-900/20 rounded-xl sm:rounded-2xl shadow-2xl flex flex-col">
           
-          {/* Header - Fixed */}
+          {/* Header */}
           <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-blue-900/20 flex-shrink-0 bg-gradient-to-r from-[#0b1c36] to-[#13294b]">
             <div>
               <h2 className="text-lg sm:text-xl font-bold text-white">
-                Add New App
+                Publish New App
               </h2>
-              <p className="text-white/60 text-xs sm:text-sm mt-1 hidden sm:block">Create a new app in your inventory</p>
+              <p className="text-white/60 text-xs sm:text-sm mt-1 hidden sm:block"></p>
             </div>
             <button
               onClick={handleClose}
@@ -279,7 +306,6 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
 
               {/* Price and Category Row */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                {/* Price */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
                     <DollarSign size={14} className="sm:hidden" />
@@ -300,7 +326,6 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
                   {errors.price && <p className="text-red-400 text-xs sm:text-sm mt-1 break-words">{errors.price}</p>}
                 </div>
 
-                {/* Category */}
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
                     <Tag size={14} className="sm:hidden" />
@@ -323,6 +348,25 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
                 </div>
               </div>
 
+              {/* Site URL */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
+                  <Globe size={14} className="sm:hidden" />
+                  <Globe size={16} className="hidden sm:block" />
+                  Site URL *
+                </label>
+                <input
+                  type="url"
+                  value={formData.siteUrl}
+                  onChange={(e) => handleInputChange('siteUrl', e.target.value)}
+                  placeholder="https://example.com"
+                  className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/10 border rounded-lg text-white placeholder-white/40 backdrop-blur-sm focus:outline-none focus:ring-2 transition-all duration-200 text-sm sm:text-base ${
+                    errors.siteUrl ? 'border-red-500 focus:ring-red-500' : 'border-blue-900/20 focus:ring-blue-500'
+                  }`}
+                />
+                {errors.siteUrl && <p className="text-red-400 text-xs sm:text-sm mt-1 break-words">{errors.siteUrl}</p>}
+              </div>
+
               {/* Image Upload */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-white mb-2">
@@ -339,6 +383,7 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
                     accept="image/*"
                     onChange={handleImageChange}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    disabled={uploadingImage}
                   />
                   <div className="text-center">
                     <ImageIcon className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-white/40" />
@@ -370,6 +415,7 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
                       type="button"
                       onClick={removeImage}
                       className="absolute top-2 right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white transition-colors duration-200"
+                      disabled={uploadingImage}
                     >
                       <X size={14} className="sm:hidden" />
                       <X size={16} className="hidden sm:block" />
@@ -386,14 +432,14 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleInputChange('is_available', !formData.is_available)}
+                  onClick={() => handleInputChange('isAvailable', !formData.isAvailable)}
                   className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0b1c36] flex-shrink-0 ${
-                    formData.is_available ? 'bg-blue-600' : 'bg-white/20'
+                    formData.isAvailable ? 'bg-blue-600' : 'bg-white/20'
                   }`}
                 >
                   <span
                     className={`inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform duration-200 ${
-                      formData.is_available ? 'translate-x-5 sm:translate-x-6' : 'translate-x-1'
+                      formData.isAvailable ? 'translate-x-5 sm:translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
@@ -401,12 +447,12 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
             </form>
           </div>
 
-          {/* Form Actions - Fixed at bottom */}
+          {/* Form Actions */}
           <div className="flex items-center justify-center gap-3 p-4 sm:p-6 border-t border-blue-900/20 bg-gradient-to-r from-[#0b1c36] to-[#13294b] flex-shrink-0">
             <button
               type="button"
               onClick={handleClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || uploadingImage}
               className="flex-1 px-4 sm:px-6 py-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-medium"
             >
               Cancel
@@ -414,11 +460,20 @@ export default function AddProductModal({ isOpen, onClose, onAddProduct }: AddPr
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || uploadingImage}
               className="flex-1 px-4 sm:px-6 py-2.5 bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#0b1c36] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-900/20 text-sm sm:text-base"
             >
               <span className="flex items-center justify-center gap-2">
-                {isSubmitting ? (
+                {uploadingImage ? (
+                  <>
+                    <svg className="animate-spin h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    <span className="hidden sm:inline">Uploading Image...</span>
+                    <span className="sm:hidden">Uploading...</span>
+                  </>
+                ) : isSubmitting ? (
                   <>
                     <svg className="animate-spin h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />

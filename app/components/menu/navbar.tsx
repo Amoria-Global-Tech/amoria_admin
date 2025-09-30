@@ -57,15 +57,10 @@ export default function Navbar() {
   // Fetch unread messages count
   const fetchUnreadCount = async () => {
     try {
-      const response = await fetch('/api/contact_messages', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await api.get('/admin/content/contacts');
 
       if (response.ok) {
-        const result = await response.json();
+        const result = await response.data;
         const newMessages = result.data?.filter((message: any) => 
           message.status === "new"
         ) || [];
