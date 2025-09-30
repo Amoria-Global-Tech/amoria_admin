@@ -1,35 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "@/app/api/conn";
+import AlertNotification from '../menu/notify';
 
 interface Service {
-  title: string;
+  name: string;
   description: string;
   features: string;
   price: string;
   category: string;
-  status: "active" | "inactive" | "pending";
+  isActive: boolean;
   icon: string;
 }
 
 interface AddServiceProps {
   onClose: () => void;
+  onAddService: (service: any) => void;
 }
 
-export default function AddService({ onClose }: AddServiceProps) {
+export default function AddService({ onClose, onAddService }: AddServiceProps) {
   const [formData, setFormData] = useState<Service>({
-    title: "",
+    name: "",
     description: "",
     features: "",
     price: "",
     category: "Development",
-    status: "active",
+    isActive: true,
     icon: "bi bi-gear-wide-connected"
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof Service, string>>>({});
+  const [result, setResult] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const categories = [
     { value: "Development", label: "Development" },
@@ -52,17 +55,23 @@ export default function AddService({ onClose }: AddServiceProps) {
     { value: "bi bi-camera", label: "Photography", icon: "bi bi-camera" }
   ];
 
-  const statusOptions = [
-    { value: "active", label: "Active", color: "text-green-400" },
-    { value: "inactive", label: "Inactive", color: "text-red-400" },
-    { value: "pending", label: "Pending", color: "text-yellow-400" }
-  ];
+  // Function to clear messages after a few seconds
+  useEffect(() => {
+    if (result) {
+      const timer = setTimeout(() => {
+        setResult(null);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [result]);
 
-  const validateForm = () => {
+  const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof Service, string>> = {};
 
-    if (!formData.title.trim()) {
-      newErrors.title = "Service title is required";
+    if (!formData.name.trim()) {
+      newErrors.name = "Service name is required";
+    } else if (formData.name.length > 150) {
+      newErrors.name = "Service name must be less than 150 characters";
     }
 
     if (!formData.features.trim()) {
@@ -84,58 +93,73 @@ export default function AddService({ onClose }: AddServiceProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
-    setSubmitError(null);
 
     try {
-      const response = await fetch('/api/blog/services/add', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      // Prepare data for backend API
+      const serviceData = {
+        name: formData.name,
+        description: formData.description,
+        features: formData.features,
+        price: formData.price,
+        category: formData.category,
+        isActive: formData.isActive,
+        icon: formData.icon
+      };
 
-      const data = await response.json();
+      const response = await api.post('/admin/content/services', serviceData);
 
-      if (!response.ok) {
-        throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
-      }
-
-      if (data.service) {
-        onClose();
+      if (response.ok) {
+        const result = await response.data;
+        if (result.success) {
+          setResult("Service added successfully");
+          onAddService(result.data);
+          handleClose();
+        } else {
+          setResult(result.error || 'Failed to add service');
+        }
       } else {
-        throw new Error('Invalid response format');
+        setResult('Failed to add service');
       }
-
     } catch (error) {
       console.error('Error adding service:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Failed to add service');
+      setResult(`Error adding service: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleChange = (field: keyof Service, value: string) => {
+  const handleClose = () => {
+    setFormData({
+      name: "",
+      description: "",
+      features: "",
+      price: "",
+      category: "Development",
+      isActive: true,
+      icon: "bi bi-gear-wide-connected"
+    });
+    setErrors({});
+    setResult(null);
+    onClose();
+  };
+
+  const handleInputChange = (field: keyof Service, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-    // Clear submit error when user makes changes
-    if (submitError) {
-      setSubmitError(null);
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
+      {result && <AlertNotification message={result} type={result.includes('success') ? 'success' : 'error'} />}
+      
       <div className="bg-gradient-to-br from-[#0b1c36] to-[#13294b] bg-opacity-95 backdrop-blur-xl border border-blue-900/20 shadow-2xl rounded-xl sm:rounded-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         
-        {/* Header - Fixed */}
+        {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10 bg-gradient-to-r from-[#0b1c36] to-[#13294b] flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="bg-pink-400/20 p-2 sm:p-3 rounded-lg sm:rounded-xl">
@@ -148,7 +172,7 @@ export default function AddService({ onClose }: AddServiceProps) {
           </div>
           
           <button
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isSubmitting}
             className="text-white/60 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
           >
@@ -156,42 +180,31 @@ export default function AddService({ onClose }: AddServiceProps) {
           </button>
         </div>
 
-        {/* Content - Scrollable */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {/* Submit Error */}
-          {submitError && (
-            <div className="mx-4 sm:mx-6 mt-4 sm:mt-6 bg-red-500/20 border border-red-500/30 rounded-lg sm:rounded-xl p-3 sm:p-4">
-              <div className="flex items-start gap-3">
-                <i className="bi bi-exclamation-triangle text-red-400 text-lg sm:text-xl flex-shrink-0 mt-0.5"></i>
-                <div className="min-w-0">
-                  <h3 className="text-red-400 font-semibold text-sm sm:text-base">Error</h3>
-                  <p className="text-red-300 text-sm break-words">{submitError}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-            {/* Service Title */}
+            
+            {/* Service Name */}
             <div>
               <label className="block text-white font-medium mb-2 text-sm sm:text-base">
-                Service Title *
+                Service Name *
               </label>
               <input
                 type="text"
-                value={formData.title}
-                onChange={(e) => handleChange("title", e.target.value)}
-                placeholder="Enter service title"
+                value={formData.name}
+                onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="Enter service name"
                 disabled={isSubmitting}
+                maxLength={150}
                 className={`w-full bg-white/10 backdrop-blur-sm border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white placeholder-white/60 focus:outline-none transition-colors disabled:opacity-50 text-sm sm:text-base ${
-                  errors.title ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
+                  errors.name ? "border-red-400 focus:border-red-400" : "border-white/20 focus:border-pink-400"
                 }`}
               />
-              {errors.title && (
+              {errors.name && (
                 <p className="text-red-400 text-xs sm:text-sm mt-1 flex items-center gap-1">
                   <i className="bi bi-exclamation-circle flex-shrink-0"></i>
-                  <span className="break-words">{errors.title}</span>
+                  <span className="break-words">{errors.name}</span>
                 </p>
               )}
             </div>
@@ -203,7 +216,7 @@ export default function AddService({ onClose }: AddServiceProps) {
               </label>
               <textarea
                 value={formData.description}
-                onChange={(e) => handleChange("description", e.target.value)}
+                onChange={(e) => handleInputChange("description", e.target.value)}
                 placeholder="Describe your service offering"
                 rows={3}
                 disabled={isSubmitting}
@@ -227,7 +240,7 @@ export default function AddService({ onClose }: AddServiceProps) {
               <input
                 type="text"
                 value={formData.features}
-                onChange={(e) => handleChange("features", e.target.value)}
+                onChange={(e) => handleInputChange("features", e.target.value)}
                 placeholder="Enter service features"
                 disabled={isSubmitting}
                 className={`w-full bg-white/10 backdrop-blur-sm border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white placeholder-white/60 focus:outline-none transition-colors disabled:opacity-50 text-sm sm:text-base ${
@@ -254,7 +267,7 @@ export default function AddService({ onClose }: AddServiceProps) {
                   <input
                     type="text"
                     value={formData.price}
-                    onChange={(e) => handleChange("price", e.target.value)}
+                    onChange={(e) => handleInputChange("price", e.target.value)}
                     placeholder="e.g., $1,500"
                     disabled={isSubmitting}
                     className={`w-full bg-white/10 backdrop-blur-sm border rounded-lg sm:rounded-xl pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 text-white placeholder-white/60 focus:outline-none transition-colors disabled:opacity-50 text-sm sm:text-base ${
@@ -277,7 +290,7 @@ export default function AddService({ onClose }: AddServiceProps) {
                 </label>
                 <select
                   value={formData.category}
-                  onChange={(e) => handleChange("category", e.target.value)}
+                  onChange={(e) => handleInputChange("category", e.target.value)}
                   disabled={isSubmitting}
                   className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white focus:outline-none focus:border-pink-400 transition-colors disabled:opacity-50 text-sm sm:text-base"
                 >
@@ -290,16 +303,15 @@ export default function AddService({ onClose }: AddServiceProps) {
               </div>
             </div>
 
-            {/* Icon and Status Row */}
+            {/* Icon Selection */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              {/* Icon Selection */}
               <div>
                 <label className="block text-white font-medium mb-2 text-sm sm:text-base">
                   Icon
                 </label>
                 <select
                   value={formData.icon}
-                  onChange={(e) => handleChange("icon", e.target.value)}
+                  onChange={(e) => handleInputChange("icon", e.target.value)}
                   disabled={isSubmitting}
                   className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white focus:outline-none focus:border-pink-400 transition-colors disabled:opacity-50 text-sm sm:text-base"
                 >
@@ -321,16 +333,13 @@ export default function AddService({ onClose }: AddServiceProps) {
                   Status
                 </label>
                 <select
-                  value={formData.status}
-                  onChange={(e) => handleChange("status", e.target.value as "active" | "inactive" | "pending")}
+                  value={formData.isActive ? "active" : "inactive"}
+                  onChange={(e) => handleInputChange("isActive", e.target.value === "active")}
                   disabled={isSubmitting}
                   className="w-full bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-white focus:outline-none focus:border-pink-400 transition-colors disabled:opacity-50 text-sm sm:text-base"
                 >
-                  {statusOptions.map(status => (
-                    <option key={status.value} value={status.value} className="bg-[#0b1c36] text-white">
-                      {status.label}
-                    </option>
-                  ))}
+                  <option value="active" className="bg-[#0b1c36] text-white">Active</option>
+                  <option value="inactive" className="bg-[#0b1c36] text-white">Inactive</option>
                 </select>
               </div>
             </div>
@@ -348,14 +357,13 @@ export default function AddService({ onClose }: AddServiceProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="text-white font-semibold text-sm sm:text-base mb-1 break-words">
-                      {formData.title || "Service Title"}
+                      {formData.name || "Service Name"}
                     </h4>
                     <span className={`inline-block px-2 py-0.5 sm:py-1 rounded-full text-xs font-medium border ${
-                      formData.status === "active" ? "bg-green-400/20 text-green-400 border-green-400/30" :
-                      formData.status === "inactive" ? "bg-red-400/20 text-red-400 border-red-400/30" :
-                      "bg-yellow-400/20 text-yellow-400 border-yellow-400/30"
+                      formData.isActive ? "bg-green-400/20 text-green-400 border-green-400/30" :
+                      "bg-red-400/20 text-red-400 border-red-400/30"
                     }`}>
-                      {formData.status.charAt(0).toUpperCase() + formData.status.slice(1)}
+                      {formData.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
                 </div>
@@ -371,11 +379,11 @@ export default function AddService({ onClose }: AddServiceProps) {
           </form>
         </div>
 
-        {/* Action Buttons - Fixed at bottom */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-3 p-4 sm:p-6 border-t border-white/10 bg-gradient-to-r from-[#0b1c36] to-[#13294b] flex-shrink-0">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isSubmitting}
             className="flex-1 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border border-white/20 hover:border-white/30 px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-medium transition-all duration-200 disabled:opacity-50 text-sm sm:text-base"
           >
@@ -389,9 +397,12 @@ export default function AddService({ onClose }: AddServiceProps) {
           >
             {isSubmitting ? (
               <>
-                <i className="bi bi-arrow-clockwise animate-spin"></i>
-                <span className="hidden sm:inline">Adding...</span>
-                <span className="sm:hidden">Add...</span>
+                <svg className="animate-spin h-3 w-3 sm:h-4 sm:w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span className="hidden sm:inline">Adding Service...</span>
+                <span className="sm:hidden">Adding...</span>
               </>
             ) : (
               <>

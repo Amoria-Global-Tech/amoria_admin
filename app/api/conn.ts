@@ -1,4 +1,4 @@
-// apiService.ts - Complete Frontend API service for JamboLush
+// API Service matching backend auth routes with token refresh middleware
 
 export interface APIConfig {
   method?: string;
@@ -6,6 +6,7 @@ export interface APIConfig {
   body?: any;
   params?: Record<string, any>;
   timeout?: number;
+  skipRetry?: boolean;
 }
 
 export interface APIResponse<T = any> {
@@ -14,7 +15,6 @@ export interface APIResponse<T = any> {
   ok: boolean;
 }
 
-// Backend response wrapper
 export interface BackendResponse<T = any> {
   success: boolean;
   message: string;
@@ -22,183 +22,32 @@ export interface BackendResponse<T = any> {
   errors?: string[];
 }
 
-// Property interfaces
-export interface Property {
-  id: number;
-  name: string;
-  location: string;
-  category: string;
-  pricePerNight: number;
-  image: string;
-  rating: number;
-  reviewsCount: number;
-  beds: number;
-  baths: number;
-  hostName: string;
-  availability: string;
-  type?: string;
+// ============ AUTH INTERFACES ============
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
 }
 
-// Detailed property info
-export interface PropertyInfo {
-  id: number;
-  name: string;
-  location: string;
-  type: string;
-  category: string;
-  pricePerNight: number;
-  pricePerTwoNights?: number;
-  beds: number;
-  baths: number;
-  maxGuests: number;
-  features: string[];
-  description?: string;
-  images: PropertyImages;
-  video3D?: string;
-  rating: number;
-  reviewsCount: number;
-  hostId: number;
-  hostName: string;
-  hostProfileImage?: string;
-  status: string;
-  availability: PropertyAvailability;
-  createdAt: string;
-  updatedAt: string;
-  totalBookings: number;
-  isVerified: boolean;
+export interface RegisterData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  userType?: string;
 }
 
-// Property images structure
-export interface PropertyImages {
-  livingRoom: string[];
-  kitchen: string[];
-  diningArea: string[];
-  bedroom: string[];
-  bathroom: string[];
-  workspace: string[];
-  balcony: string[];
-  laundryArea: string[];
-  gym: string[];
-  exterior: string[];
-  childrenPlayroom: string[];
+export interface GoogleAuthData {
+  token: string;
+  userType?: string;
 }
 
-// Property availability
-export interface PropertyAvailability {
-  isAvailable: boolean;
-  availableFrom?: string;
-  availableTo?: string;
-  blockedDates: string[];
-  minStay: number;
-  maxStay?: number;
+export interface AppleAuthData {
+  token: string;
+  userType?: string;
 }
 
-// Property search filters
-export interface PropertyFilters {
-  location?: string;
-  type?: string;
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  beds?: number;
-  baths?: number;
-  maxGuests?: number;
-  features?: string[];
-  availableFrom?: string;
-  availableTo?: string;
-  status?: string;
-  hostId?: number;
-  search?: string;
-  keyword?: string;
-  sortBy?: 'price' | 'rating' | 'created_at' | 'name';
-  sortOrder?: 'asc' | 'desc';
-  page?: number;
-  limit?: number;
-}
-
-// Properties response structure
-export interface PropertiesResponse {
-  properties: Property[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-// Booking interfaces
-export interface BookingData {
-  propertyId: number;
-  checkIn: string;
-  checkOut: string;
-  guests: number;
-  totalPrice?: number;
-  paymentTiming: 'now' | 'later';
-  paymentMethod?: 'card' | 'momo' | 'airtel' | 'mpesa' | 'property';
-  message?: string;
-  cardDetails?: {
-    cardNumber: string;
-    expiryDate: string;
-    cvv: string;
-    cardholderName: string;
-  };
-  mobileDetails?: {
-    phoneNumber: string;
-  };
-}
-
-export interface BookingInfo {
-  id: string;
-  propertyId: number;
-  propertyName: string;
-  propertyImage: string;
-  propertyLocation: string;
-  guestId: number;
-  guestName: string;
-  guestEmail: string;
-  hostId: number;
-  hostName: string;
-  hostEmail: string;
-  checkIn: string;
-  checkOut: string;
-  nights: number;
-  guests: number;
-  pricePerNight: number;
-  subtotal: number;
-  cleaningFee: number;
-  serviceFee: number;
-  taxes: number;
-  totalPrice: number;
-  status: string;
-  paymentMethod?: string;
-  paymentTiming: string;
-  message?: string;
-  cancellationReason?: string;
-  refundAmount?: number;
-  createdAt: string;
-  updatedAt: string;
-  confirmationCode: string;
-}
-
-export interface BookingValidation {
-  isAvailable: boolean;
-  conflicts: any[];
-  priceBreakdown: {
-    basePrice: number;
-    nights: number;
-    subtotal: number;
-    cleaningFee: number;
-    serviceFee: number;
-    taxes: number;
-    total: number;
-    currency: string;
-  };
-  maxGuests: number;
-  minStay: number;
-  maxStay?: number;
-  cancellationPolicy: string;
-}
-
-// User interfaces
 export interface User {
   id: number;
   email: string;
@@ -206,99 +55,84 @@ export interface User {
   lastName: string;
   phone?: string;
   profileImage?: string;
+  userType: string;
+  name?: string;
+  provider?: string;
+  isActive?: boolean;
+  isVerified?: boolean;
+  employmentType?: string;
+  documentUrls?: Record<string, string>;
 }
 
-interface EscrowTerms {
-  type: 'manual' | 'automatic' | 'conditional' | 'milestone';
-  description: string;
-  conditions: string[];
-  autoRelease?: {
-    enabled: boolean;
-    date?: string;
-    conditions?: string[];
-  };
-  disputeSettings?: {
-    deadline?: string;
-  };
-  milestones?: Array<{
-    title: string;
-    description: string;
-    amount: number;
-    percentage: number;
-    dueDate?: string;
-  }>;
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
 }
 
-interface PaymentDetails {
-  type: 'card' | 'mobile_money';
-  // For card payments
-  cardNumber?: string;
-  expiryDate?: string;
-  cvv?: string;
-  cardholderName?: string;
-  // For mobile money payments
-  provider?: 'momo' | 'airtel' | 'mpesa';
-  phoneNumber?: string;
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
 }
 
-interface PaymentRequest {
-  bookingId: string;
-  amount: number;
-  paymentMethod: 'card' | 'momo' | 'airtel' | 'mpesa';
-  currency: 'USD' | 'RWF';
-  reference: string;
-  description?: string;
-  escrowTerms: EscrowTerms;
-  paymentDetails?: PaymentDetails;
-  disputeDeadline?: string;
-  autoReleaseDate?: string;
+export interface PasswordResetData {
+  email: string;
 }
 
-// ============ TOUR INTERFACES ============
+export interface OTPVerificationData {
+  email: string;
+  otp: string;
+}
 
-export interface Tour {
+export interface ResetPasswordData {
+  email: string;
+  otp: string;
+  newPassword: string;
+}
+
+export interface SetupPasswordData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface KYCData {
+  documentType: string;
+  documentNumber: string;
+  documentImage: File;
+  selfie: File;
+}
+
+export interface UserSession {
   id: string;
-  title: string;
-  location: string;
-  rating: number;
-  reviews: number;
-  duration: string;
-  price: number;
-  image: string;
-  isBestseller?: boolean;
-  category: string;
+  deviceInfo: string;
+  ipAddress: string;
+  loginTime: string;
+  isActive: boolean;
 }
 
-export interface TourFilters {
-  search?: string;
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  location?: string;
-  rating?: number;
-  sortBy?: 'price' | 'rating' | 'reviews' | 'title';
-  sortOrder?: 'asc' | 'desc';
-  page?: number;
-  limit?: number;
-}
-
-export interface ToursResponse {
-  tours: Tour[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-class FrontendAPIService {
+class APIService {
   private baseURL: string;
   private defaultHeaders: Record<string, string> = {
     'Accept': 'application/json'
   };
+  private isRefreshing = false;
+  private failedQueue: Array<{
+    resolve: (value: any) => void;
+    reject: (error: any) => void;
+    config: any;
+  }> = [];
 
   constructor() {
     this.baseURL = process.env.NEXT_PUBLIC_API_ENDPOINT_URL || 'http://localhost:5000/api';
   }
+
+  // ============ AUTH TOKEN MANAGEMENT ============
 
   setAuth(token: string): void {
     this.defaultHeaders['Authorization'] = `Bearer ${token}`;
@@ -311,7 +145,25 @@ class FrontendAPIService {
   setHeaders(headers: Record<string, string>): void {
     Object.assign(this.defaultHeaders, headers);
   }
-  
+
+  private clearAuthData(): void {
+    localStorage.removeItem('authenticated');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userInfo');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('authOTP');
+    localStorage.removeItem('otpTimestamp');
+    this.clearAuth();
+  }
+
+  private redirectToLogin(): void {
+    if (typeof window !== 'undefined' && window.location) {
+      window.location.href = '/auth';
+    }
+  }
+
+  // ============ REQUEST UTILITIES ============
 
   private buildURL(endpoint: string, params?: Record<string, any>): string {
     const baseURL = this.baseURL.endsWith('/') ? this.baseURL : this.baseURL + '/';
@@ -383,8 +235,67 @@ class FrontendAPIService {
     });
   }
 
-  async request<T = any>(endpoint: string, config: APIConfig = {}): Promise<APIResponse<T>> {
-    const { method = 'GET', headers = {}, body, params, timeout = 500000 } = config;
+  // ============ TOKEN REFRESH MIDDLEWARE ============
+
+  private processFailedQueue(error: any, token: string | null = null): void {
+    this.failedQueue.forEach(({ resolve, reject, config }) => {
+      if (error) {
+        reject(error);
+      } else {
+        if (token) {
+          config.headers = config.headers || {};
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+        resolve(this.executeRequest(config));
+      }
+    });
+    
+    this.failedQueue = [];
+  }
+
+  private async refreshAuthToken(): Promise<string> {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await this.executeRequest({
+        endpoint: '/auth/refresh-token',
+        method: 'POST',
+        body: { refreshToken },
+        skipRetry: true
+      });
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+
+      const result: BackendResponse<RefreshTokenResponse> = response.data;
+      
+      if (!result.success || !result.data?.accessToken) {
+        throw new Error('Invalid refresh response');
+      }
+
+      localStorage.setItem('authToken', result.data.accessToken);
+      if (result.data.refreshToken) {
+        localStorage.setItem('refreshToken', result.data.refreshToken);
+      }
+
+      this.setAuth(result.data.accessToken);
+      return result.data.accessToken;
+
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      throw error;
+    }
+  }
+
+  // ============ CORE REQUEST METHOD ============
+
+  private async executeRequest(config: any): Promise<APIResponse<any>> {
+    const { endpoint, method = 'GET', headers = {}, body, params, timeout = 50000 } = config;
     
     const url = this.buildURL(endpoint, params);
     const mergedHeaders = { ...this.defaultHeaders, ...headers };
@@ -411,21 +322,21 @@ class FrontendAPIService {
 
       clearTimeout(timeoutId);
 
-      let data: T;
+      let data: any;
       const contentType = response.headers.get('content-type') || '';
       
       if (contentType.includes('json')) {
         data = await response.json();
       } else if (contentType.includes('text')) {
-        data = await response.text() as T;
+        data = await response.text();
       } else if (contentType.includes('blob') || contentType.includes('octet-stream')) {
-        data = await response.blob() as T;
+        data = await response.blob();
       } else {
         const text = await response.text();
         try {
           data = JSON.parse(text);
         } catch {
-          data = text as T;
+          data = text;
         }
       }
 
@@ -449,7 +360,71 @@ class FrontendAPIService {
     }
   }
 
-  // HTTP method shortcuts
+  async request<T = any>(endpoint: string, config: APIConfig = {}): Promise<APIResponse<T>> {
+    const { skipRetry = false } = config;
+    let retryCount = 0;
+    const maxRetries = 5;
+
+    const makeRequest = async (): Promise<APIResponse<T>> => {
+      try {
+        return await this.executeRequest({ endpoint, ...config });
+      } catch (error: any) {
+        if (error.status === 401 && !skipRetry && retryCount < maxRetries) {
+          retryCount++;
+          
+          if (this.isRefreshing) {
+            return new Promise((resolve, reject) => {
+              this.failedQueue.push({
+                resolve,
+                reject,
+                config: { endpoint, ...config }
+              });
+            });
+          }
+
+          try {
+            this.isRefreshing = true;
+            const newToken = await this.refreshAuthToken();
+            this.processFailedQueue(null, newToken);
+            
+            const retryConfig = {
+              ...config,
+              headers: {
+                ...config.headers,
+                'Authorization': `Bearer ${newToken}`
+              }
+            };
+            
+            return await this.executeRequest({ endpoint, ...retryConfig });
+            
+          } catch (refreshError) {
+            console.error(`Token refresh attempt ${retryCount} failed:`, refreshError);
+            this.processFailedQueue(refreshError);
+            
+            if (retryCount >= maxRetries) {
+              console.error('Max retry attempts reached. Clearing auth data.');
+              this.clearAuthData();
+              this.redirectToLogin();
+              throw new Error('Authentication failed after maximum retry attempts');
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+            return makeRequest();
+            
+          } finally {
+            this.isRefreshing = false;
+          }
+        }
+        
+        throw error;
+      }
+    };
+
+    return makeRequest();
+  }
+
+  // ============ HTTP METHOD SHORTCUTS ============
+
   get<T = any>(url: string, config?: Omit<APIConfig, 'method' | 'body'>): Promise<APIResponse<T>> {
     return this.request<T>(url, { ...config, method: 'GET' });
   }
@@ -470,477 +445,276 @@ class FrontendAPIService {
     return this.request<T>(url, { ...config, method: 'DELETE' });
   }
 
-  // ============ AUTHENTICATION METHODS ============
+  // ============ PUBLIC AUTHENTICATION METHODS ============
 
   /**
    * User registration
    */
-  async register(userData: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    phone?: string;
-  }): Promise<APIResponse<BackendResponse<{ user: User; accessToken: string; refreshToken: string }>>> {
-    return this.post<BackendResponse<{ user: User; accessToken: string; refreshToken: string }>>('/auth/register', userData);
+  async register(userData: RegisterData): Promise<APIResponse<BackendResponse<AuthResponse>>> {
+    return this.post<BackendResponse<AuthResponse>>('/auth/register', userData, { skipRetry: true });
   }
 
   /**
    * User login
    */
-  async login(credentials: {
-    email: string;
-    password: string;
-  }): Promise<APIResponse<BackendResponse<{ user: User; accessToken: string; refreshToken: string }>>> {
-    return this.post<BackendResponse<{ user: User; accessToken: string; refreshToken: string }>>('/auth/login', credentials);
+  async login(credentials: LoginCredentials): Promise<APIResponse<BackendResponse<AuthResponse>>> {
+    return this.post<BackendResponse<AuthResponse>>('/auth/login', credentials, { skipRetry: true });
   }
 
   /**
-   * User logout
+   * Google OAuth authentication
    */
-  async logout(): Promise<APIResponse<BackendResponse<any>>> {
-    return this.post<BackendResponse<any>>('/auth/logout');
+  async googleAuth(authData: GoogleAuthData): Promise<APIResponse<BackendResponse<AuthResponse>>> {
+    return this.post<BackendResponse<AuthResponse>>('/auth/google', authData, { skipRetry: true });
+  }
+
+  /**
+   * Apple OAuth authentication
+   */
+  async appleAuth(authData: AppleAuthData): Promise<APIResponse<BackendResponse<AuthResponse>>> {
+    return this.post<BackendResponse<AuthResponse>>('/auth/apple', authData, { skipRetry: true });
   }
 
   /**
    * Refresh access token
    */
-  async refreshToken(refreshToken: string): Promise<APIResponse<BackendResponse<{ accessToken: string; refreshToken: string }>>> {
-    return this.post<BackendResponse<{ accessToken: string; refreshToken: string }>>('/auth/refresh', { refreshToken });
+  async refreshToken(refreshToken: string): Promise<APIResponse<BackendResponse<RefreshTokenResponse>>> {
+    return this.post<BackendResponse<RefreshTokenResponse>>('/auth/refresh-token', { refreshToken }, { skipRetry: true });
   }
+
+  /**
+   * Check email status (if email exists)
+   */
+  async checkEmailStatus(email: string): Promise<APIResponse<BackendResponse<{ exists: boolean; provider?: string }>>> {
+    return this.get<BackendResponse<{ exists: boolean; provider?: string }>>(`/auth/check-email/${email}`, { skipRetry: true });
+  }
+
+  // ============ PASSWORD RESET METHODS ============
+
+  /**
+   * Request password reset
+   */
+  async forgotPassword(data: PasswordResetData): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>('/auth/forgot-password', data, { skipRetry: true });
+  }
+
+  /**
+   * Verify OTP for password reset
+   */
+  async verifyOtp(data: OTPVerificationData): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>('/auth/verify-otp', data, { skipRetry: true });
+  }
+
+  /**
+   * Reset password with OTP
+   */
+  async resetPassword(data: ResetPasswordData): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>('/auth/reset-password', data, { skipRetry: true });
+  }
+
+  /**
+   * Setup password for service providers
+   */
+  async setupPassword(data: SetupPasswordData): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>('/auth/setup-password', data, { skipRetry: true });
+  }
+
+  // ============ PROTECTED USER METHODS ============
 
   /**
    * Get current user profile
    */
-  async getProfile(): Promise<APIResponse<BackendResponse<User>>> {
-    return this.get<BackendResponse<User>>('/auth/profile');
-  }
-
-  /**
-   * Update user profile
-   */
-  async updateProfile(profileData: Partial<User>): Promise<APIResponse<BackendResponse<User>>> {
-    return this.put<BackendResponse<User>>('/auth/profile', profileData);
-  }
-
-  // ============ BOOKING API METHODS ============
-
-  /**
-   * Create a new booking
-   */
-  async createBooking(bookingData: BookingData): Promise<APIResponse<BackendResponse<BookingInfo>>> {
-    return this.post<BackendResponse<BookingInfo>>('/bookings', bookingData);
-  }
-
-  /**
-   * Get booking by ID
-   */
-  async getBooking(bookingId: string): Promise<APIResponse<BackendResponse<BookingInfo>>> {
-    return this.get<BackendResponse<BookingInfo>>(`/bookings/properties/${bookingId}`);
-  }
-
-  /**
-   * Get booking by confirmation code (public)
-   */
-  async getBookingByConfirmation(bookingId: string): Promise<APIResponse<BackendResponse<BookingInfo>>> {
-    return this.get<BackendResponse<BookingInfo>>(`/bookings/confirmation/${bookingId}`);
-  }
-
-  /**
-   * Update booking
-   */
-  async updateBooking(bookingId: string, updateData: any, role: 'guest' | 'host' = 'guest'): Promise<APIResponse<BackendResponse<BookingInfo>>> {
-    return this.put<BackendResponse<BookingInfo>>(`/bookings/${bookingId}?role=${role}`, updateData);
-  }
-
-  /**
-   * Cancel booking
-   */
-  async cancelBooking(bookingId: string, reason: string, role: 'guest' | 'host' = 'guest'): Promise<APIResponse<BackendResponse<BookingInfo>>> {
-    return this.patch<BackendResponse<BookingInfo>>(`/bookings/${bookingId}/cancel?role=${role}`, { reason });
-  }
-
-  /**
-   * Validate booking availability and pricing
-   */
-  async validateBooking(propertyId: number, checkIn: string, checkOut: string, guests: number): Promise<APIResponse<BackendResponse<BookingValidation>>> {
-    return this.post<BackendResponse<BookingValidation>>('/bookings/validate', {
-      propertyId,
-      checkIn,
-      checkOut,
-      guests
-    });
-  }
-
-  /**
-   * Confirm booking (host action)
-   */
-  async confirmBooking(bookingId: string): Promise<APIResponse<BackendResponse<BookingInfo>>> {
-    return this.patch<BackendResponse<BookingInfo>>(`/bookings/${bookingId}/confirm`);
-  }
-
-  /**
-   * Complete booking (host action)
-   */
-  async completeBooking(bookingId: string): Promise<APIResponse<BackendResponse<BookingInfo>>> {
-    return this.patch<BackendResponse<BookingInfo>>(`/bookings/${bookingId}/complete`);
-  }
-
-  /**
-   * Search bookings with filters
-   */
-  async searchBookings(filters?: any): Promise<APIResponse<BackendResponse<{ bookings: any[]; total: number; page: number; limit: number; totalPages: number }>>> {
-    const params: Record<string, any> = {};
-    
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          params[key] = value;
-        }
-      });
+  async getCurrentUser(): Promise<APIResponse<User>> {
+    const response = await this.get<BackendResponse<User>>('/auth/me');
+    // Extract data from BackendResponse wrapper for backward compatibility
+    if (response.ok && response.data.success) {
+      return {
+        ...response,
+        data: response.data.data
+      };
     }
-
-    return this.get<BackendResponse<{ bookings: any[]; total: number; page: number; limit: number; totalPages: number }>>('/bookings/search', { params });
+    throw new Error(response.data.message || 'Failed to get user profile');
   }
 
   /**
-   * Get property bookings
+   * Update current user profile
    */
-  async getPropertyBookings(propertyId: number): Promise<APIResponse<BackendResponse<any[]>>> {
-    return this.get<BackendResponse<any[]>>(`/bookings/property/${propertyId}`);
-  }
-
-
-  
-  // ============ PROPERTY API METHODS ============
-
-  /**
-   * Fetch all properties with optional filters
-   */
-  async getProperties(filters?: PropertyFilters): Promise<APIResponse<BackendResponse<PropertiesResponse>>> {
-    const params: Record<string, any> = {};
-    
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          // Map 'keyword' to 'search' for backend compatibility
-          if (key === 'keyword') {
-            params.search = value;
-          } else {
-            params[key] = value;
-          }
-        }
-      });
-    }
-
-    return this.get<BackendResponse<PropertiesResponse>>('/properties', { params });
+  async updateMe(profileData: Partial<User>): Promise<APIResponse<BackendResponse<User>>> {
+    return this.put<BackendResponse<User>>('/auth/me', profileData);
   }
 
   /**
-   * Get a single property by ID
+   * Update profile image
    */
-  async getProperty(id: number | string): Promise<APIResponse<BackendResponse<PropertyInfo>>> {
-    return this.get<BackendResponse<PropertyInfo>>(`/properties/${id}`);
+  async updateProfileImage(imageFile: File): Promise<APIResponse<BackendResponse<{ profileImage: string }>>> {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    return this.put<BackendResponse<{ profileImage: string }>>('/auth/me/image', formData);
   }
 
   /**
-   * Search properties with keyword and location
+   * Change password from profile
    */
-  async searchProperties(
-    keyword?: string, 
-    location?: string, 
-    category?: string
-  ): Promise<APIResponse<BackendResponse<PropertiesResponse>>> {
-    const filters: PropertyFilters = {};
-    
-    if (keyword) filters.search = keyword;
-    if (location) filters.location = location;
-    if (category && category !== 'all') filters.category = category;
-    
-    return this.getProperties(filters);
+  async changePassword(data: ChangePasswordData): Promise<APIResponse<BackendResponse<any>>> {
+    return this.put<BackendResponse<any>>('/auth/me/password', data);
   }
 
   /**
-   * Get featured/recommended properties
+   * Update document URL
    */
-  async getFeaturedProperties(limit: number = 12): Promise<APIResponse<BackendResponse<PropertiesResponse>>> {
-    return this.get<BackendResponse<PropertiesResponse>>('/properties/featured', { 
-      params: { limit } 
-    });
+  async updateDocumentUrl(documentType: string, documentUrl: string): Promise<APIResponse<BackendResponse<any>>> {
+    return this.put<BackendResponse<any>>('/auth/me/document-url', { documentType, documentUrl });
   }
 
   /**
-   * Get properties by category
+   * Get user documents
    */
-  async getPropertiesByCategory(
-    category: string, 
-    limit?: number
-  ): Promise<APIResponse<BackendResponse<PropertiesResponse>>> {
-    const params: Record<string, any> = { category };
-    if (limit) params.limit = limit;
-    
-    return this.get<BackendResponse<PropertiesResponse>>('/properties', { params });
+  async getUserDocuments(): Promise<APIResponse<BackendResponse<Record<string, string>>>> {
+    return this.get<BackendResponse<Record<string, string>>>('/auth/me/documents');
   }
 
   /**
-   * Get available locations for properties
+   * Remove document URL
    */
-  async getLocations(): Promise<APIResponse<BackendResponse<string[]>>> {
-    return this.get<BackendResponse<string[]>>('/properties/locations');
+  async removeDocumentUrl(documentType: string): Promise<APIResponse<BackendResponse<any>>> {
+    return this.delete<BackendResponse<any>>(`/auth/me/documents/${documentType}`);
+  }
+
+  // ============ SESSION MANAGEMENT ============
+
+  /**
+   * User logout
+   */
+  async logout(): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>('/auth/logout', {}, { skipRetry: true });
   }
 
   /**
-   * Get property categories
+   * Logout from all devices
    */
-  async getCategories(): Promise<APIResponse<BackendResponse<string[]>>> {
-    return this.get<BackendResponse<string[]>>('/properties/categories');
+  async logoutAllDevices(): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>('/auth/logout-all');
   }
 
   /**
-   * Create new property (host)
+   * Get user sessions
    */
-  async createProperty(propertyData: any): Promise<APIResponse<BackendResponse<PropertyInfo>>> {
-    return this.post<BackendResponse<PropertyInfo>>('/properties', propertyData);
+  async getUserSessions(): Promise<APIResponse<BackendResponse<UserSession[]>>> {
+    return this.get<BackendResponse<UserSession[]>>('/auth/sessions');
+  }
+
+  // ============ TOUR GUIDE METHODS ============
+
+  /**
+   * Update tour guide employment type
+   */
+  async updateTourGuideType(employmentType: string): Promise<APIResponse<BackendResponse<User>>> {
+    return this.put<BackendResponse<User>>('/auth/tourguide/employment-type', { employmentType });
+  }
+
+  // ============ KYC METHODS ============
+
+  /**
+   * Submit KYC documents
+   */
+  async submitKYC(kycData: KYCData): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>('/auth/kyc/submit', kycData);
   }
 
   /**
-   * Update property (host)
+   * Get KYC status
    */
-  async updateProperty(propertyId: number, propertyData: any): Promise<APIResponse<BackendResponse<PropertyInfo>>> {
-    return this.put<BackendResponse<PropertyInfo>>(`/properties/${propertyId}`, propertyData);
+  async getKYCStatus(): Promise<APIResponse<BackendResponse<any>>> {
+    return this.get<BackendResponse<any>>('/auth/kyc/status');
+  }
+
+  // ============ ADMIN METHODS ============
+
+  /**
+   * Get user statistics (admin only)
+   */
+  async getUserStatistics(): Promise<APIResponse<BackendResponse<any>>> {
+    return this.get<BackendResponse<any>>('/auth/admin/statistics');
   }
 
   /**
-   * Delete property (host)
+   * Get all users (admin)
    */
-  async deleteProperty(propertyId: number): Promise<APIResponse<BackendResponse<any>>> {
-    return this.delete<BackendResponse<any>>(`/properties/${propertyId}`);
-  }
-
-/**
- * Search tours with filters
- */
-async searchTours(filters?: TourFilters): Promise<APIResponse<BackendResponse<ToursResponse>>> {
-  const params: Record<string, any> = {};
-  
-  if (filters) {
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') {
-        params[key] = value;
-      }
-    });
-  }
-
-  return this.get<BackendResponse<ToursResponse>>('/tours/search', { params });
-}
-
-/**
- * Get all tours with optional filters
- */
-async getTours(filters?: TourFilters): Promise<APIResponse<BackendResponse<ToursResponse>>> {
-  return this.searchTours(filters);
-}
-
-/**
- * Get a single tour by ID
- */
-async getTour(id: string): Promise<APIResponse<BackendResponse<Tour>>> {
-  return this.get<BackendResponse<Tour>>(`/tours/${id}`);
-}
-
-/**
- * Get featured tours
- */
-async getFeaturedTours(limit: number = 12): Promise<APIResponse<BackendResponse<ToursResponse>>> {
-  return this.get<BackendResponse<ToursResponse>>('/tours/featured', { 
-    params: { limit } 
-  });
-}
-
-/**
- * Get tour categories
- */
-async getTourCategories(): Promise<APIResponse<BackendResponse<string[]>>> {
-  return this.get<BackendResponse<string[]>>('/tours/categories');
-}
-
-/**
- * Get tour locations
- */
-async getTourLocations(): Promise<APIResponse<BackendResponse<string[]>>> {
-  return this.get<BackendResponse<string[]>>('/tours/locations');
-}
-
-// ============ REVIEW API METHODS ============
-
-/**
- * Create a new review for a property
- */
-async addPropertyReview(
-  reviewData: {
-    propertyId: number;
-    rating: number;
-    comment: string;
-    images?: string[];
-  }
-): Promise<APIResponse<BackendResponse<any>>> {
-  return this.post<BackendResponse<any>>(
-    `/properties/${reviewData.propertyId}/reviews`,
-    reviewData
-  );
-}
-
-/**
- * Get all reviews for a specific property (with pagination)
- */
-async getPropertyReviews(
-  propertyId: number,
-  page: number = 1,
-  limit: number = 10
-): Promise<
-  APIResponse<
-    BackendResponse<{
-      reviews: any[];
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    }>
-  >
-> {
-  return this.get<
-    BackendResponse<{
-      reviews: any[];
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    }>
-  >(`/properties/${propertyId}/reviews`, {
-    params: { page, limit },
-  });
-}
-
-/**
- * Get all reviews written by a specific user (with pagination)
- */
-async getUserReviews(
-  userId: number,
-  page: number = 1,
-  limit: number = 10
-): Promise<
-  APIResponse<
-    BackendResponse<{
-      reviews: any[];
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    }>
-  >
-> {
-  return this.get<
-    BackendResponse<{
-      reviews: any[];
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    }>
-  >(`/reviews/user/${userId}`, {
-    params: { page, limit },
-  });
-}
-
-/**
- * Update an existing review (owner only)
- */
-async updateReview(
-  reviewId: string,
-  updateData: {
-    rating?: number;
-    comment?: string;
-    images?: string[];
-  }
-): Promise<APIResponse<BackendResponse<any>>> {
-  return this.put<BackendResponse<any>>(`/reviews/${reviewId}`, updateData);
-}
-
-/**
- * Delete a review (owner only)
- */
-async deleteReview(
-  reviewId: string
-): Promise<APIResponse<BackendResponse<any>>> {
-  return this.delete<BackendResponse<any>>(`/reviews/${reviewId}`);
-}
-
-// ============ REVIEW HELPER METHODS ============
-
-/**
- * Check if user can review a property (has completed booking)
- */
-async canUserReviewProperty(
-  propertyId: number
-): Promise<APIResponse<BackendResponse<{ canReview: boolean; reason?: string }>>> {
-  return this.get<BackendResponse<{ canReview: boolean; reason?: string }>>(
-    `/properties/${propertyId}/can-review`
-  );
-}
-
-/**
- * Get review statistics for a property
- */
-async getPropertyReviewStats(
-  propertyId: number
-): Promise<
-  APIResponse<
-    BackendResponse<{
-      averageRating: number;
-      totalReviews: number;
-      ratingDistribution: { [key: number]: number };
-    }>
-  >
-> {
-  return this.get<
-    BackendResponse<{
-      averageRating: number;
-      totalReviews: number;
-      ratingDistribution: { [key: number]: number };
-    }>
-  >(`/properties/${propertyId}/review-stats`);
-}
-
-
-  // ============ PAYMENT METHODS ============
-
-  /**
-   * Process payment
-   */
-// Updated processPayment method
-async processPayment(paymentData: PaymentRequest): Promise<APIResponse<BackendResponse<any>>> {
-  return this.post<BackendResponse<any>>('/payments/deposits', paymentData);
-}
-
-  /**
-   * Get payment status
-   */
-  async getPaymentStatus(paymentId: string): Promise<APIResponse<BackendResponse<any>>> {
-    return this.get<BackendResponse<any>>(`/payments/${paymentId}/status`);
+  async getAllUsers(params?: any): Promise<APIResponse<BackendResponse<User[]>>> {
+    return this.get<BackendResponse<User[]>>('/auth/admin/users', { params });
   }
 
   /**
-   * Request refund
+   * Create user (admin)
    */
-  async requestRefund(bookingId: string, reason: string, amount?: number): Promise<APIResponse<BackendResponse<any>>> {
-    return this.post<BackendResponse<any>>('/payments/refund', {
-      bookingId,
-      reason,
-      amount
-    });
+  async adminCreateUser(userData: any): Promise<APIResponse<BackendResponse<User>>> {
+    return this.post<BackendResponse<User>>('/auth/admin/users', userData);
   }
 
-  // ============ FILE UPLOAD METHODS ============
+  /**
+   * Get user by email (admin)
+   */
+  async getUserByEmail(email: string): Promise<APIResponse<BackendResponse<User>>> {
+    return this.get<BackendResponse<User>>(`/auth/admin/users/email/${email}`);
+  }
+
+  /**
+   * Get users by provider (admin)
+   */
+  async getUsersByProvider(provider: string): Promise<APIResponse<BackendResponse<User[]>>> {
+    return this.get<BackendResponse<User[]>>(`/auth/admin/users/provider/${provider}`);
+  }
+
+  /**
+   * Get users by type (admin)
+   */
+  async getUsersByType(userType: string): Promise<APIResponse<BackendResponse<User[]>>> {
+    return this.get<BackendResponse<User[]>>(`/auth/admin/users/type/${userType}`);
+  }
+
+  /**
+   * Get user by ID (admin)
+   */
+  async getUserById(id: string): Promise<APIResponse<BackendResponse<User>>> {
+    return this.get<BackendResponse<User>>(`/auth/admin/users/${id}`);
+  }
+
+  /**
+   * Update user (admin)
+   */
+  async adminUpdateUser(id: string, userData: any): Promise<APIResponse<BackendResponse<User>>> {
+    return this.put<BackendResponse<User>>(`/auth/admin/users/${id}`, userData);
+  }
+
+  /**
+   * Delete user (admin)
+   */
+  async adminDeleteUser(id: string): Promise<APIResponse<BackendResponse<any>>> {
+    return this.delete<BackendResponse<any>>(`/auth/admin/users/${id}`);
+  }
+
+  /**
+   * Suspend user (admin)
+   */
+  async adminSuspendUser(id: string, reason?: string): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>(`/auth/admin/users/${id}/suspend`, { reason });
+  }
+
+  /**
+   * Activate user (admin)
+   */
+  async adminActivateUser(id: string): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>(`/auth/admin/users/${id}/activate`);
+  }
+
+  /**
+   * Reset user password (admin)
+   */
+  async adminResetUserPassword(id: string): Promise<APIResponse<BackendResponse<any>>> {
+    return this.post<BackendResponse<any>>(`/auth/admin/users/${id}/reset-password`);
+  }
+
+  // ============ FILE UPLOAD UTILITIES ============
 
   /**
    * Upload single file
@@ -968,46 +742,6 @@ async processPayment(paymentData: PaymentRequest): Promise<APIResponse<BackendRe
 
   // ============ UTILITY METHODS ============
 
-  /**
-   * Transform backend property to match frontend expectations
-   */
-  static transformProperty(backendProperty: Property): Property & { 
-    title: string; 
-    pricePerNight: string; 
-    reviews: number; 
-    image: string 
-  } {
-    return {
-      ...(backendProperty as Property),
-      title: backendProperty.name,
-      pricePerNight: `$${backendProperty.pricePerNight}`,
-      reviews: backendProperty.reviewsCount,
-      image: backendProperty.image || 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=800&q=80'
-    } as Property & { 
-      title: string; 
-      pricePerNight: string; 
-      reviews: number; 
-      image: string 
-    };
-  }
-
-  /**
-   * Transform backend response to include calculated pagination fields
-   */
-  static transformPropertiesResponse(backendResponse: PropertiesResponse): PropertiesResponse & {
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
-  } {
-    return {
-      ...backendResponse,
-      hasNextPage: backendResponse.page < backendResponse.totalPages,
-      hasPrevPage: backendResponse.page > 1
-    };
-  }
-
-  /**
-   * Format currency
-   */
   static formatCurrency(amount: number, currency: string = 'USD'): string {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -1015,9 +749,6 @@ async processPayment(paymentData: PaymentRequest): Promise<APIResponse<BackendRe
     }).format(amount);
   }
 
-  /**
-   * Format date
-   */
   static formatDate(dateString: string, options?: Intl.DateTimeFormatOptions): string {
     const defaultOptions: Intl.DateTimeFormatOptions = {
       year: 'numeric',
@@ -1028,11 +759,15 @@ async processPayment(paymentData: PaymentRequest): Promise<APIResponse<BackendRe
     return new Date(dateString).toLocaleDateString('en-US', options || defaultOptions);
   }
 
-  
+  static isSuccess<T>(response: BackendResponse<T>): boolean {
+    return response.success === true;
+  }
 
+  static extractData<T>(response: BackendResponse<T>): T {
+    return response.data;
+  }
 }
 
-// Export singleton instance for frontend use
-const api = new FrontendAPIService();
+// Export singleton instance
+const api = new APIService();
 export default api;
-

@@ -1,18 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Globe } from 'lucide-react';
+import api from "@/app/api/conn";
+import { uploadProductImage } from '@/app/api/utils/storage';
 
 interface Product {
   id: number;
   name: string;
   description: string;
   price: number;
-  image_url: string;
+  imageUrl: string;
+  siteUrl: string;
   category: string;
   isAvailable: boolean;
   createdAt: string;
-  updated_at: string;
+  updatedAt: string;
 }
 
 interface EditProductModalProps {
@@ -33,10 +36,12 @@ export default function EditProductModal({
     description: '',
     price: '',
     category: '',
-    is_available: true,
+    siteUrl: '',
+    isAvailable: true,
     image: null as File | null
   });
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
   const [imagePreview, setImagePreview] = useState<string>('');
 
@@ -47,10 +52,11 @@ export default function EditProductModal({
         description: product.description || '',
         price: product.price.toString(),
         category: product.category || '',
-        is_available: product.isAvailable,
+        siteUrl: product.siteUrl || '',
+        isAvailable: product.isAvailable,
         image: null
       });
-      setImagePreview(product.image_url);
+      setImagePreview(product.imageUrl || '');
     }
   }, [product]);
 
@@ -70,7 +76,6 @@ export default function EditProductModal({
     if (file) {
       setFormData(prev => ({ ...prev, image: file }));
       
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -79,42 +84,111 @@ export default function EditProductModal({
     }
   };
 
+  const validateForm = (): boolean => {
+    if (!formData.name.trim()) {
+      setError('Product name is required');
+      return false;
+    }
+
+    if (!formData.description.trim()) {
+      setError('Description is required');
+      return false;
+    }
+
+    if (!formData.price || parseFloat(formData.price) <= 0) {
+      setError('Price must be greater than 0');
+      return false;
+    }
+
+    if (!formData.category) {
+      setError('Category is required');
+      return false;
+    }
+
+    if (!formData.siteUrl.trim()) {
+      setError('Site URL is required');
+      return false;
+    }
+
+    // Validate URL format
+    try {
+      new URL(formData.siteUrl);
+    } catch {
+      setError('Please enter a valid URL (e.g., https://example.com)');
+      return false;
+    }
+
+    if (formData.image) {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowedTypes.includes(formData.image.type)) {
+        setError('Image must be JPEG, PNG, or WebP format');
+        return false;
+      }
+
+      if (formData.image.size > 5 * 1024 * 1024) {
+        setError('Image must be less than 5MB');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!validateForm()) return;
+
     setLoading(true);
 
     try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('id', product.id.toString());
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('price', formData.price);
-      formDataToSend.append('category', formData.category);
-      formDataToSend.append('is_available', formData.is_available.toString());
-      
+      let imageUrl = product.imageUrl || ''; // Keep existing image URL by default
+
+      // Upload new image to Supabase if a new image was selected
       if (formData.image) {
-        formDataToSend.append('image', formData.image);
+        setUploadingImage(true);
+        const uploadResult = await uploadProductImage(formData.image, formData.name);
+        setUploadingImage(false);
+
+        if (!uploadResult.success) {
+          setError(`Image upload failed: ${uploadResult.error}`);
+          setLoading(false);
+          return;
+        }
+
+        imageUrl = uploadResult.url || '';
       }
 
-      const response = await fetch('/api/blog/products/add', {
-        method: 'PATCH',
-        body: formDataToSend
-      });
+      // Prepare data for backend API to match expected format
+      const productData = {
+        name: formData.name,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        category: formData.category,
+        imageUrl: imageUrl,
+        siteUrl: formData.siteUrl,
+        isAvailable: formData.isAvailable !== false
+      };
 
-      const data = await response.json();
+      const response = await api.put(`/admin/content/products/${product.id}`, productData);
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update product');
+      if (response.ok) {
+        const result = await response.data;
+        if (result.success) {
+          onUpdateProduct(result.data);
+          onClose();
+        } else {
+          setError(result.error || 'Failed to update product');
+        }
+      } else {
+        setError('Failed to update product');
       }
-
-      // Call the callback with updated product
-      onUpdateProduct(data.product);
-      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update product');
     } finally {
       setLoading(false);
+      setUploadingImage(false);
     }
   };
 
@@ -139,9 +213,20 @@ export default function EditProductModal({
           </div>
         )}
 
+        {uploadingImage && (
+          <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-3 mb-4">
+            <p className="text-blue-300 text-sm flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Uploading image...
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {/* Product Name */}
             <div>
               <label className="block text-white/80 text-sm font-medium mb-2">
                 Product Name *
@@ -157,22 +242,21 @@ export default function EditProductModal({
               />
             </div>
 
-            {/* Description */}
             <div>
               <label className="block text-white/80 text-sm font-medium mb-2">
-                Description
+                Description *
               </label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleInputChange}
+                required
                 rows={3}
                 className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-pink-400 transition-colors resize-none"
                 placeholder="Enter product description"
               />
             </div>
 
-            {/* Price */}
             <div>
               <label className="block text-white/80 text-sm font-medium mb-2">
                 Price *
@@ -190,22 +274,37 @@ export default function EditProductModal({
               />
             </div>
 
-            {/* Category */}
             <div>
               <label className="block text-white/80 text-sm font-medium mb-2">
-                Category
+                Category *
               </label>
               <input
                 type="text"
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
+                required
                 className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-pink-400 transition-colors"
                 placeholder="Enter category"
               />
             </div>
 
-            {/* Current Image Preview */}
+            <div>
+              <label className="flex items-center gap-2 text-white/80 text-sm font-medium mb-2">
+                <Globe size={16} />
+                Site URL *
+              </label>
+              <input
+                type="url"
+                name="siteUrl"
+                value={formData.siteUrl}
+                onChange={handleInputChange}
+                required
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-white/50 focus:outline-none focus:border-pink-400 transition-colors"
+                placeholder="https://example.com"
+              />
+            </div>
+
             {imagePreview && (
               <div>
                 <label className="block text-white/80 text-sm font-medium mb-2">
@@ -221,7 +320,6 @@ export default function EditProductModal({
               </div>
             )}
 
-            {/* New Image Upload */}
             <div>
               <label className="block text-white/80 text-sm font-medium mb-2">
                 Update Image (optional)
@@ -231,41 +329,41 @@ export default function EditProductModal({
                 name="image"
                 onChange={handleImageChange}
                 accept="image/*"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-400 file:text-white hover:file:bg-pink-500 transition-colors"
+                disabled={uploadingImage}
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-400 file:text-white hover:file:bg-pink-500 transition-colors disabled:opacity-50"
               />
             </div>
 
-            {/* Availability */}
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                name="is_available"
-                id="is_available"
-                checked={formData.is_available}
+                name="isAvailable"
+                id="isAvailable"
+                checked={formData.isAvailable}
                 onChange={handleInputChange}
                 className="w-4 h-4 text-pink-400 bg-white/10 border-white/20 rounded focus:ring-pink-400 focus:ring-2"
               />
-              <label htmlFor="is_available" className="text-white/80 text-sm">
+              <label htmlFor="isAvailable" className="text-white/80 text-sm">
                 Product is available
               </label>
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-3 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 border border-white/20"
+              disabled={loading || uploadingImage}
+              className="flex-1 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || uploadingImage}
               className="flex-1 bg-gradient-to-r from-pink-400 to-pink-500 hover:from-pink-500 hover:to-pink-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Updating...' : 'Update Product'}
+              {uploadingImage ? 'Uploading...' : loading ? 'Updating...' : 'Update Product'}
             </button>
           </div>
         </form>

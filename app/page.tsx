@@ -1,6 +1,6 @@
 "use client";
 
-import { JSX, useEffect, useState } from "react";
+import { JSX, useEffect, useState, useMemo } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -11,6 +11,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import api from "./api/conn";
 
 // TypeScript interfaces matching your API structure
 interface DayStats {
@@ -23,15 +24,17 @@ interface DayStats {
 
 interface VisitorRecord {
   id: number;
-  ip_address: string;
+  ipAddress: string | null;
+  location: string;
   country: string;
   city: string;
   region: string;
   timezone: string;
-  page_url: string;
-  referrer: string;
-  created_at: string;
-  user_agent: string;
+  userAgent: string | null;
+  pageUrl: string | null;
+  referrer: string | null;
+  sessionId: string | null;
+  createdAt: string;
 }
 
 interface ProcessedVisit {
@@ -59,20 +62,17 @@ interface AnalyticsData {
 
 interface APIResponse {
   success: boolean;
-  data: VisitorRecord[];
-  pagination: {
-    total: number;
-    limit: number;
-    offset: number;
-    pages: number;
+  data: {
+    data: VisitorRecord[];
   };
 }
 
-type DateRange = "today" | "week" | "month" | "custom";
+type DateRange = "today" | "week" | "month" | "all" | "custom";
 type ViewMode = "bar" | "line";
 
 // Helper function to extract browser from user agent
-function getBrowserName(userAgent: string): string {
+function getBrowserName(userAgent: string | null): string {
+  if (!userAgent) return 'Unknown';
   if (userAgent.includes('Chrome')) return 'Chrome';
   if (userAgent.includes('Firefox')) return 'Firefox';
   if (userAgent.includes('Safari')) return 'Safari';
@@ -80,28 +80,125 @@ function getBrowserName(userAgent: string): string {
   return 'Other';
 }
 
-// Helper function to process raw visitor data into analytics
-function processVisitorData(visitors: VisitorRecord[]): AnalyticsStats {
+// Helper function to check if date is within range
+function isDateInRange(date: Date, range: DateRange, customStart?: string, customEnd?: string): boolean {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999); // End of today
+  
+  const startOfToday = new Date(today);
+  startOfToday.setHours(0, 0, 0, 0);
+  
+  const weekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+  weekAgo.setHours(0, 0, 0, 0);
+  
+  const monthAgo = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000);
+  monthAgo.setHours(0, 0, 0, 0);
+
+  switch (range) {
+    case "today":
+      return date >= startOfToday && date <= today;
+    case "week":
+      return date >= weekAgo && date <= today;
+    case "month":
+      return date >= monthAgo && date <= today;
+    case "custom":
+      if (!customStart || !customEnd) return true;
+      const start = new Date(customStart);
+      const end = new Date(customEnd);
+      end.setHours(23, 59, 59, 999);
+      return date >= start && date <= end;
+    case "all":
+    default:
+      return true;
+  }
+}
+
+// Helper function to get date range bounds
+function getDateRangeBounds(range: DateRange, customStart?: string, customEnd?: string): { start: Date; end: Date } {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  
+  const startOfToday = new Date(today);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  switch (range) {
+    case "today":
+      return { start: startOfToday, end: today };
+    case "week":
+      const weekAgo = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+      weekAgo.setHours(0, 0, 0, 0);
+      return { start: weekAgo, end: today };
+    case "month":
+      const monthAgo = new Date(today.getTime() - 29 * 24 * 60 * 60 * 1000);
+      monthAgo.setHours(0, 0, 0, 0);
+      return { start: monthAgo, end: today };
+    case "custom":
+      if (!customStart || !customEnd) {
+        return { start: new Date(0), end: today };
+      }
+      const start = new Date(customStart);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(customEnd);
+      end.setHours(23, 59, 59, 999);
+      return { start, end };
+    case "all":
+    default:
+      return { start: new Date(0), end: today };
+  }
+}
+
+// Helper function to generate all dates in range
+function generateDateRange(startDate: Date, endDate: Date): string[] {
+  const dates: string[] = [];
+  const current = new Date(startDate);
+  
+  while (current <= endDate) {
+    dates.push(current.toISOString().split('T')[0]);
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return dates;
+}
+
+// Helper function to process raw visitor data into analytics with filtering
+function processVisitorData(visitors: VisitorRecord[], dateRange: DateRange, customStart?: string, customEnd?: string): AnalyticsStats {
+  const { start, end } = getDateRangeBounds(dateRange, customStart, customEnd);
+  
+  // Filter visitors based on date range
+  const filteredVisitors = visitors.filter(visitor => {
+    const visitDate = new Date(visitor.createdAt);
+    return visitDate >= start && visitDate <= end;
+  });
+
+  // Generate all dates in the range to ensure complete chart data
+  const allDatesInRange = dateRange === "all" ? [] : generateDateRange(start, end);
+  
   // Group by date for daily stats
   const dailyStats = new Map<string, { count: number; views: number }>();
   const uniqueIPs = new Set<string>();
   const countryCount = new Map<string, number>();
   const pageCount = new Map<string, number>();
 
-  visitors.forEach(visitor => {
-    const date = visitor.created_at.split('T')[0];
+  // Initialize all dates in range with zero counts
+  allDatesInRange.forEach(date => {
+    dailyStats.set(date, { count: 0, views: 0 });
+  });
+
+  filteredVisitors.forEach(visitor => {
+    const date = visitor.createdAt.split('T')[0];
     const existing = dailyStats.get(date) || { count: 0, views: 0 };
     dailyStats.set(date, { count: existing.count + 1, views: existing.views + 1 });
     
-    uniqueIPs.add(visitor.ip_address);
+    if (visitor.ipAddress) {
+      uniqueIPs.add(visitor.ipAddress);
+    }
     
     if (visitor.country) {
       countryCount.set(visitor.country, (countryCount.get(visitor.country) || 0) + 1);
     }
     
-    if (visitor.page_url) {
-      // page_url is already a path like /about, so use it directly
-      pageCount.set(visitor.page_url, (pageCount.get(visitor.page_url) || 0) + 1);
+    if (visitor.pageUrl) {
+      pageCount.set(visitor.pageUrl, (pageCount.get(visitor.pageUrl) || 0) + 1);
     }
   });
 
@@ -121,7 +218,7 @@ function processVisitorData(visitors: VisitorRecord[]): AnalyticsStats {
     .slice(0, 10);
 
   return {
-    total: visitors.length,
+    total: filteredVisitors.length,
     perDay,
     uniqueVisitors: uniqueIPs.size,
     topCountries,
@@ -129,71 +226,64 @@ function processVisitorData(visitors: VisitorRecord[]): AnalyticsStats {
   };
 }
 
-// Fetch function for API
-async function fetchAnalytics(start?: string, end?: string, limit = 500): Promise<AnalyticsData> {
+// Fetch function for API - now fetches all data
+async function fetchAllAnalytics(): Promise<VisitorRecord[]> {
   try {
-    const params = new URLSearchParams();
-    if (start) params.append('start_date', start);
-    if (end) params.append('end_date', end);
-    params.append('limit', limit.toString());
-    
-    const response = await fetch(`/api/overview?${params}`);
+    const response = await api.get('/admin/analytics/visitors');
     if (!response.ok) throw new Error('API request failed');
     
-    const apiData: APIResponse = await response.json();
+    const apiData: APIResponse = await response.data;
     
     if (!apiData.success) {
       throw new Error('API returned error');
     }
 
-    // Process the raw data
-    const stats = processVisitorData(apiData.data);
-    
-    // Convert visitor records to processed visits
-    const visits: ProcessedVisit[] = apiData.data.slice(0, 10).map(visitor => ({
-      id: visitor.id,
-      ip: visitor.ip_address,
-      location: visitor.city && visitor.country ? `${visitor.city}, ${visitor.country}` : 
-                visitor.country || 'Unknown',
-      timestamp: visitor.created_at,
-      page: visitor.page_url,
-      duration: '0m 0s', // Duration not tracked in current schema
-      browser: getBrowserName(visitor.user_agent)
-    }));
-
-    return { stats, visits };
+    return apiData.data.data;
     
   } catch (error) {
     console.error('Error fetching analytics:', error);
-    
-    // Return empty data structure on error
-    return {
-      stats: {
-        total: 0,
-        perDay: [],
-        uniqueVisitors: 0,
-        topCountries: [],
-        topPages: []
-      },
-      visits: []
-    };
+    return [];
   }
 }
 
-// Format date for display
-function formatDateLabel(dateString: string): string {
+// Format date for display based on range
+function formatDateLabel(dateString: string, dateRange: DateRange): string {
   const date = new Date(dateString);
   const today = new Date();
   const diffDays = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
   
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday'; 
-  if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  // For today range, show hours
+  if (dateRange === "today") {
+    if (diffDays === 0) return 'Today';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  
+  // For week range, show day names
+  if (dateRange === "week") {
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  
+  // For month and longer ranges, show dates
+  if (dateRange === "month" || dateRange === "custom") {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  
+  // For all time, show month/day or month/year for older dates
+  const currentYear = today.getFullYear();
+  const dateYear = date.getFullYear();
+  
+  if (dateYear === currentYear) {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } else {
+    return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+  }
 }
 
 export default function VisitorAnalytics(): JSX.Element {
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [allVisitors, setAllVisitors] = useState<VisitorRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>("week");
@@ -201,48 +291,14 @@ export default function VisitorAnalytics(): JSX.Element {
   const [customEnd, setCustomEnd] = useState<string>("");
   const [viewMode, setViewMode] = useState<ViewMode>("bar");
 
-  async function loadData(range: DateRange): Promise<void> {
+  // Load all data once on component mount
+  async function loadAllData(): Promise<void> {
     setLoading(true);
     setError(null);
     
     try {
-      let start: string | undefined, end: string | undefined;
-      const now = new Date();
-
-      switch (range) {
-        case "today":
-          start = end = now.toISOString().split("T")[0];
-          break;
-        case "week":
-          end = now.toISOString().split("T")[0];
-          start = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-          break;
-        case "month":
-          end = now.toISOString().split("T")[0];
-          start = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-          break;
-        case "custom":
-          start = customStart;
-          end = customEnd;
-          break;
-      }
-
-      const result = await fetchAnalytics(start, end);
-      
-      // Process chart data with proper date formatting
-      const processedData = result.stats.perDay.map((item: DayStats) => ({
-        ...item,
-        formattedDate: formatDateLabel(item.date),
-        originalDate: item.date
-      }));
-      
-      setAnalytics({
-        ...result,
-        stats: {
-          ...result.stats,
-          perDay: processedData
-        }
-      });
+      const visitors = await fetchAllAnalytics();
+      setAllVisitors(visitors);
     } catch (err) {
       setError('Failed to load analytics data');
       console.error('Analytics loading error:', err);
@@ -252,8 +308,84 @@ export default function VisitorAnalytics(): JSX.Element {
   }
 
   useEffect(() => {
-    loadData(dateRange);
-  }, [dateRange, customStart, customEnd]);
+    loadAllData();
+  }, []);
+
+  // Process analytics data based on current filters - using useMemo for performance
+  const analytics = useMemo((): AnalyticsData => {
+    if (allVisitors.length === 0) {
+      return {
+        stats: {
+          total: 0,
+          perDay: [],
+          uniqueVisitors: 0,
+          topCountries: [],
+          topPages: []
+        },
+        visits: []
+      };
+    }
+
+    // Filter visitors for recent visits display (last 10 from filtered data)
+    const { start, end } = getDateRangeBounds(dateRange, customStart, customEnd);
+    const filteredVisitors = allVisitors.filter(visitor => {
+      const visitDate = new Date(visitor.createdAt);
+      return visitDate >= start && visitDate <= end;
+    });
+
+    const stats = processVisitorData(allVisitors, dateRange, customStart, customEnd);
+    
+    // Process chart data with proper date formatting
+    const processedPerDay = stats.perDay.map((item: DayStats) => ({
+      ...item,
+      formattedDate: formatDateLabel(item.date, dateRange),
+      originalDate: item.date
+    }));
+
+    // Convert recent visitor records to processed visits
+    const recentVisits: ProcessedVisit[] = filteredVisitors
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 10)
+      .map(visitor => {
+        let locationStr = 'Unknown';
+        try {
+          if (visitor.location && visitor.location !== 'null') {
+            const locationData = JSON.parse(visitor.location);
+            locationStr = locationData.city && locationData.country 
+              ? `${locationData.city}, ${locationData.country}`
+              : locationData.country || 'Unknown';
+          } else if (visitor.city && visitor.country) {
+            locationStr = `${visitor.city}, ${visitor.country}`;
+          } else if (visitor.country) {
+            locationStr = visitor.country;
+          }
+        } catch {
+          if (visitor.city && visitor.country) {
+            locationStr = `${visitor.city}, ${visitor.country}`;
+          } else if (visitor.country) {
+            locationStr = visitor.country;
+          }
+        }
+
+        return {
+          id: visitor.id,
+          ip: visitor.ipAddress || 'Unknown',
+          location: locationStr,
+          timestamp: visitor.createdAt,
+          page: visitor.pageUrl || '/',
+          duration: '0m 0s', // Duration not tracked in current schema
+          browser: getBrowserName(visitor.userAgent)
+        };
+      });
+
+    return {
+      stats: {
+        ...stats,
+        perDay: processedPerDay
+      },
+      visits: recentVisits
+    };
+  }, [allVisitors, dateRange, customStart, customEnd]);
 
   const handleDateRangeChange = (range: DateRange): void => {
     setDateRange(range);
@@ -288,7 +420,7 @@ export default function VisitorAnalytics(): JSX.Element {
         <div className="text-center py-8">
           <div className="text-red-400 mb-2">⚠️ {error}</div>
           <button 
-            onClick={() => loadData(dateRange)}
+            onClick={loadAllData}
             className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
           >
             Retry
@@ -298,24 +430,22 @@ export default function VisitorAnalytics(): JSX.Element {
     );
   }
 
-  if (!analytics) {
-    return <div className="text-center py-8 text-white/70">No data available</div>;
-  }
-
   const ChartComponent = viewMode === "line" ? LineChart : BarChart;
   const ChartElement = viewMode === "line" ? 
     <Line type="monotone" dataKey="count" stroke="#ec4899" strokeWidth={2} dot={{ fill: "#ec4899", r: 3 }} /> :
     <Bar dataKey="count" fill="#ec4899" radius={[2, 2, 0, 0]} />;
 
   const dailyAverage = analytics.stats.perDay.length > 0 ? 
-    Math.round(analytics.stats.perDay.reduce((acc, day) => acc + day.count, 0) / analytics.stats.perDay.length) : 0;
+    Math.round(analytics.stats.total / analytics.stats.perDay.length) : 0;
   const peakDay = analytics.stats.perDay.length > 0 ? 
     Math.max(...analytics.stats.perDay.map(d => d.count)) : 0;
+  const totalDays = analytics.stats.perDay.length;
 
   const dateRangeOptions: { value: DateRange; label: string }[] = [
     { value: "today", label: "Today" },
     { value: "week", label: "Week" },
     { value: "month", label: "Month" },
+    { value: "all", label: "All Time" },
     { value: "custom", label: "Custom" }
   ];
 
@@ -324,6 +454,9 @@ export default function VisitorAnalytics(): JSX.Element {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-white">Visitor Analytics</h1>
         <div className="flex gap-2">
+          <div className="text-xs text-white/50 px-3 py-1">
+            {allVisitors.length} total records loaded
+          </div>
           <button
             onClick={handleViewModeToggle}
             className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 rounded-md transition-colors text-white/70 hover:text-white"
@@ -332,7 +465,7 @@ export default function VisitorAnalytics(): JSX.Element {
             {viewMode === "bar" ? "Line View" : "Bar View"}
           </button>
           <button
-            onClick={() => loadData(dateRange)}
+            onClick={loadAllData}
             className="px-3 py-1 text-xs bg-pink-500/20 hover:bg-pink-500/30 rounded-md transition-colors text-pink-300 hover:text-pink-200"
             type="button"
           >
@@ -392,8 +525,8 @@ export default function VisitorAnalytics(): JSX.Element {
           <div className="text-sm text-white/60">Daily Average</div>
         </div>
         <div className="bg-gradient-to-b from-[#0b1c36] to-[#13294b] bg-opacity-80 backdrop-blur-xl border border-blue-900/20 rounded-xl p-4 shadow-lg">
-          <div className="text-2xl font-bold text-pink-400">{peakDay}</div>
-          <div className="text-sm text-white/60">Peak Day</div>
+          <div className="text-2xl font-bold text-pink-400">{totalDays}</div>
+          <div className="text-sm text-white/60">Days in Range</div>
         </div>
       </div>
 
@@ -406,11 +539,11 @@ export default function VisitorAnalytics(): JSX.Element {
               <XAxis 
                 dataKey="formattedDate" 
                 stroke="#e2e8f0"
-                fontSize={12}
-                interval={0}
-                angle={-45}
-                textAnchor="end"
-                height={60}
+                fontSize={10}
+                interval={dateRange === "today" ? 0 : dateRange === "week" ? 0 : 'preserveStartEnd'}
+                angle={dateRange === "month" || dateRange === "custom" ? -45 : 0}
+                textAnchor={dateRange === "month" || dateRange === "custom" ? "end" : "middle"}
+                height={dateRange === "month" || dateRange === "custom" ? 60 : 40}
               />
               <YAxis stroke="#e2e8f0" fontSize={12} />
               <Tooltip 
@@ -471,7 +604,7 @@ export default function VisitorAnalytics(): JSX.Element {
 
       {/* Recent Visits */}
       <div className="bg-gradient-to-b from-[#0b1c36] to-[#13294b] bg-opacity-80 backdrop-blur-xl border border-blue-900/20 rounded-xl p-6 shadow-lg">
-        <h3 className="text-lg font-medium mb-4 text-white">Recent Visitors</h3>
+        <h3 className="text-lg font-medium mb-4 text-white">Recent Visitors ({dateRange})</h3>
         <div className="space-y-3">
           {analytics.visits.length > 0 ? 
             analytics.visits.map((visit: ProcessedVisit) => (

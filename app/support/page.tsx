@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import ContactMessageCard from "../components/messages/card";
 import ReplyModal from "../components/messages/reply_modal";
+import api from "../api/conn";
 
 interface ContactMessage {
   id: string;
@@ -26,21 +27,21 @@ export default function MessagesPage() {
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch messages from real API
+  // Fetch messages from API
   const fetchMessages = async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Build query params
       const params = new URLSearchParams();
       if (filterStatus !== 'all') params.append('status', filterStatus);
       if (searchTerm) params.append('search', searchTerm);
       params.append('sort', sortBy);
-      
-      const response = await fetch(`/api/contact_messages?${params}`);
-      const result = await response.json();
-      
+
+      const response = await api.get(`/admin/content/contacts?${params}`);
+      const result = await response.data;
+
       if (result.success) {
         setMessages(result.data);
       } else {
@@ -57,7 +58,7 @@ export default function MessagesPage() {
 
   useEffect(() => {
     fetchMessages();
-  }, [filterStatus, sortBy]);
+  }, [filterStatus, sortBy]); // Refetch when filters change
 
   // Debounced search
   useEffect(() => {
@@ -80,24 +81,32 @@ export default function MessagesPage() {
 
     try {
       // Send email reply via API
-      const response = await fetch('/api/contact_messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messageId: selectedMessage.id,
-          to: selectedMessage.email,
-          subject: replyData.subject,
-          message: replyData.message
-        })
-      });
+      const response = await api.post('/admin/content/contacts', {
+        messageId: selectedMessage.id,
+        to: selectedMessage.email,
+        subject: replyData.subject,
+        message: replyData.message
+      }
+      );
 
-      const result = await response.json();
+      const result: any = await response;
 
       if (result.success) {
-        // Refresh messages to get updated data
-        await fetchMessages();
+        // Update message status locally
+        setMessages(prev => prev.map(msg =>
+          msg.id === selectedMessage.id
+            ? {
+              ...msg,
+              status: "replied",
+              repliedAt: new Date().toISOString(),
+              adminReply: replyData.message
+            }
+            : msg
+        ));
         setShowReplyModal(false);
         setSelectedMessage(null);
+
+        // Show success message (you can add a toast notification here)
         alert('Reply sent successfully!');
       } else {
         throw new Error(result.message || 'Failed to send reply');
@@ -111,17 +120,12 @@ export default function MessagesPage() {
   const handleStatusChange = async (messageId: string, newStatus: "new" | "replied" | "closed") => {
     try {
       // Update status via API
-      const response = await fetch('/api/contact_messages', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messageId, status: newStatus })
-      });
+      const response = await api.post('/admin/content/contacts', { messageId, status: newStatus });
 
-      const result = await response.json();
-      
+      const result: any = await response;
+
       if (result.success) {
-        // Update local state
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
           msg.id === messageId ? { ...msg, status: newStatus } : msg
         ));
       } else {
@@ -229,7 +233,7 @@ export default function MessagesPage() {
           <div className="flex items-center gap-3">
             <i className="bi bi-exclamation-triangle text-red-400"></i>
             <p className="text-red-300">{error}</p>
-            <button 
+            <button
               onClick={fetchMessages}
               className="ml-auto px-3 py-1 bg-red-500/20 hover:bg-red-500/30 rounded text-sm text-red-300 hover:text-red-200 transition-colors"
             >
@@ -285,9 +289,9 @@ export default function MessagesPage() {
             <i className="bi bi-inbox text-white/40 text-6xl mb-4"></i>
             <h3 className="text-white text-xl font-semibold mb-2">No messages found</h3>
             <p className="text-white/60">
-              {searchTerm || filterStatus !== 'all' 
-                ? 'Try adjusting your search or filter criteria' 
-                : 'No messages yet'}
+              {searchTerm || filterStatus !== 'all'
+                ? 'Try adjusting your search or filter criteria'
+                : 'No contact messages yet'}
             </p>
           </div>
         ) : (
