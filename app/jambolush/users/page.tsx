@@ -8,24 +8,70 @@ interface User {
   firstName: string;
   lastName: string;
   userType: 'guest' | 'host' | 'agent' | 'tourguide' | 'admin';
-  tourGuideType?: 'freelancer' | 'employed';
   status: 'active' | 'pending' | 'suspended' | 'inactive';
   verificationStatus: 'verified' | 'pending' | 'unverified' | 'rejected';
   kycStatus: 'approved' | 'pending' | 'rejected';
-  phone?: string;
-  phoneCountryCode?: string;
+  provider?: string;
   country?: string;
-  city?: string;
-  profileImage?: string;
   totalBookings?: number;
   totalProperties?: number;
   totalTours?: number;
-  averageRating?: number;
-  created_at: string;
-  createdAt: string;
   lastLogin?: string;
+  createdAt: string;
   isVerified: boolean;
-  kycCompleted: boolean;
+  profileImage?: string;
+  phone?: string;
+  phoneCountryCode?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    province?: string;
+    country?: string;
+    zipCode?: string;
+    postalCode?: string;
+    postcode?: string;
+    pinCode?: string;
+    eircode?: string;
+    cep?: string;
+  };
+  profile?: {
+    bio?: string;
+    experience?: number;
+    languages?: string[];
+    specializations?: string[];
+    rating?: number;
+    totalSessions?: number;
+    averageRating?: number;
+  };
+  business?: {
+    companyName?: string;
+    companyTIN?: string;
+    licenseNumber?: string;
+    tourGuideType?: 'freelancer' | 'employed';
+    certifications?: string[];
+  };
+  verification?: {
+    isVerified: boolean;
+    verificationDocument?: string;
+    addressDocument?: string;
+    kycCompleted: boolean;
+    kycSubmittedAt?: string;
+    twoFactorEnabled: boolean;
+  };
+  metrics?: {
+    totalEarnings?: number;
+    pendingPayouts?: number;
+    completedTransactions?: number;
+    disputedTransactions?: number;
+  };
+  recentActivity?: any[];
+  sessions?: any[];
+  // Legacy fields for backward compatibility
+  tourGuideType?: 'freelancer' | 'employed';
+  city?: string;
+  averageRating?: number;
+  kycCompleted?: boolean;
   bio?: string;
   experience?: number;
   languages?: string[];
@@ -37,7 +83,7 @@ interface User {
   nationalId?: string;
   companyName?: string;
   companyTIN?: string;
-  twoFactorEnabled: boolean;
+  twoFactorEnabled?: boolean;
   preferredCommunication?: string;
 }
 
@@ -369,7 +415,36 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
     if (!user) return;
     try {
       const response = await api.get(`/admin/users/${user.id}`);
-      setUserDetails(response.data.data);
+      const data = response.data.data;
+
+      // Normalize data - flatten nested structures for backward compatibility
+      const normalizedUser = {
+        ...data,
+        // Flatten address
+        city: data.address?.city || data.city,
+        country: data.address?.country || data.country,
+
+        // Flatten profile
+        bio: data.profile?.bio || data.bio,
+        experience: data.profile?.experience || data.experience,
+        languages: data.profile?.languages || data.languages,
+        specializations: data.profile?.specializations || data.specializations,
+        averageRating: data.profile?.averageRating || data.averageRating,
+
+        // Flatten business
+        companyName: data.business?.companyName || data.companyName,
+        companyTIN: data.business?.companyTIN || data.companyTIN,
+        licenseNumber: data.business?.licenseNumber || data.licenseNumber,
+        tourGuideType: data.business?.tourGuideType || data.tourGuideType,
+
+        // Flatten verification
+        verificationDocument: data.verification?.verificationDocument || data.verificationDocument,
+        addressDocument: data.verification?.addressDocument || data.addressDocument,
+        kycCompleted: data.verification?.kycCompleted || data.kycCompleted,
+        twoFactorEnabled: data.verification?.twoFactorEnabled || data.twoFactorEnabled,
+      };
+
+      setUserDetails(normalizedUser);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching user details:', error);
@@ -620,11 +695,43 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-white/60 text-sm mb-1">User Type</label>
-                      <span className="px-2 py-1 rounded text-xs font-medium capitalize bg-blue-500/20 text-blue-400">
-                        {userDetails?.userType}
-                        {userDetails?.tourGuideType && ` (${userDetails.tourGuideType})`}
-                      </span>
+                      {editMode ? (
+                        <select
+                          value={formData.userType || ''}
+                          onChange={(e) => setFormData({...formData, userType: e.target.value as any})}
+                          className="w-full bg-slate-800/60 border border-slate-700 rounded px-3 py-2 text-white"
+                        >
+                          <option value="guest">Guest</option>
+                          <option value="host">Host</option>
+                          <option value="agent">Agent</option>
+                          <option value="tourguide">Tour Guide</option>
+                        </select>
+                      ) : (
+                        <span className="px-2 py-1 rounded text-xs font-medium capitalize bg-blue-500/20 text-blue-400">
+                          {userDetails?.userType}
+                          {userDetails?.tourGuideType && ` (${userDetails.tourGuideType})`}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Tour Guide Type - only show if userType is tourguide */}
+                    {(editMode ? formData.userType === 'tourguide' : userDetails?.userType === 'tourguide') && (
+                      <div>
+                        <label className="block text-white/60 text-sm mb-1">Tour Guide Type</label>
+                        {editMode ? (
+                          <select
+                            value={formData.tourGuideType || 'freelancer'}
+                            onChange={(e) => setFormData({...formData, tourGuideType: e.target.value as any})}
+                            className="w-full bg-slate-800/60 border border-slate-700 rounded px-3 py-2 text-white"
+                          >
+                            <option value="freelancer">Freelancer</option>
+                            <option value="employed">Employed</option>
+                          </select>
+                        ) : (
+                          <p className="text-white capitalize">{userDetails?.tourGuideType || 'N/A'}</p>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-white/60 text-sm mb-1">Country</label>
@@ -660,6 +767,63 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                     </div>
                   </div>
                 </div>
+
+                {/* Address Information */}
+                {userDetails?.address && (
+                  <div className="border-t border-slate-700 pt-6">
+                    <h4 className="text-white font-medium mb-4">Address Information</h4>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Street</label>
+                          {editMode ? (
+                            <input
+                              type="text"
+                              value={formData.address?.street || ''}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                address: { ...formData.address, street: e.target.value }
+                              })}
+                              className="w-full bg-slate-800/60 border border-slate-700 rounded px-3 py-2 text-white"
+                            />
+                          ) : (
+                            <p className="text-white">{userDetails.address.street || 'N/A'}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">City</label>
+                          <p className="text-white">{userDetails.address.city || 'N/A'}</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Province/State</label>
+                          <p className="text-white">{userDetails.address.province || userDetails.address.state || 'N/A'}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Country</label>
+                          <p className="text-white">{userDetails.address.country || 'N/A'}</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Postal/Zip Code</label>
+                          <p className="text-white">
+                            {userDetails.address.zipCode ||
+                             userDetails.address.postalCode ||
+                             userDetails.address.postcode ||
+                             userDetails.address.pinCode ||
+                             userDetails.address.eircode ||
+                             userDetails.address.cep ||
+                             'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Tour Guide Specific Fields */}
                 {userDetails?.userType === 'tourguide' && (
@@ -718,7 +882,7 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
             {activeTab === 'verification' && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">Verification & KYC</h3>
-                
+
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div className="bg-slate-800/50 p-4 rounded">
@@ -733,13 +897,20 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                         </span>
                         {userDetails?.verificationStatus !== 'verified' && (
                           <button
-                            onClick={() => handleAction('verify_account')}
+                            onClick={() => {
+                              if (confirm('Are you sure you want to verify this account? This will set verificationStatus to "verified" and isVerified to true.')) {
+                                handleAction('verify_account');
+                              }
+                            }}
                             disabled={actionLoading === 'verify_account'}
                             className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-xs text-white disabled:opacity-50"
                           >
-                            {actionLoading === 'verify_account' ? 'Verifying...' : 'Verify'}
+                            {actionLoading === 'verify_account' ? 'Verifying...' : 'Verify Account'}
                           </button>
                         )}
+                      </div>
+                      <div className="mt-2 text-xs text-white/60">
+                        Email Verified: {userDetails?.isVerified ? '✓ Yes' : '✗ No'}
                       </div>
                     </div>
 
@@ -757,69 +928,119 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                           {userDetails?.kycStatus === 'pending' && (
                             <>
                               <button
-                                onClick={() => handleAction('verify_kyc')}
+                                onClick={() => {
+                                  if (confirm('Are you sure you want to approve this KYC? This will:\n- Set kycStatus to "approved"\n- Set verificationStatus to "verified"\n- Set isVerified to true')) {
+                                    handleAction('verify_kyc');
+                                  }
+                                }}
                                 disabled={actionLoading === 'verify_kyc'}
                                 className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-xs text-white disabled:opacity-50"
                               >
-                                {actionLoading === 'verify_kyc' ? 'Approving...' : 'Approve'}
+                                {actionLoading === 'verify_kyc' ? 'Approving...' : 'Approve KYC'}
                               </button>
                               <button
-                                onClick={() => handleAction('reject_kyc')}
+                                onClick={() => {
+                                  const reason = prompt('Please provide a reason for rejecting this KYC:');
+                                  if (reason) {
+                                    handleAction('reject_kyc', { reason });
+                                  }
+                                }}
                                 disabled={actionLoading === 'reject_kyc'}
                                 className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-xs text-white disabled:opacity-50"
                               >
-                                {actionLoading === 'reject_kyc' ? 'Rejecting...' : 'Reject'}
+                                {actionLoading === 'reject_kyc' ? 'Rejecting...' : 'Reject KYC'}
                               </button>
                             </>
                           )}
                         </div>
+                      </div>
+                      <div className="mt-2 text-xs text-white/60">
+                        KYC Completed: {userDetails?.kycCompleted ? '✓ Yes' : '✗ No'}
+                        {userDetails?.verification?.kycSubmittedAt && (
+                          <div>Submitted: {formatDate(userDetails.verification.kycSubmittedAt, true)}</div>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-4">
                     <div className="bg-slate-800/50 p-4 rounded">
-                      <p className="text-white/60 text-sm">Documents</p>
-                      <div className="mt-2 space-y-2">
-                        {userDetails?.verificationDocument && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-white text-sm">ID Document</span>
-                            <a 
-                              href={userDetails.verificationDocument} 
-                              target="_blank" 
+                      <p className="text-white/60 text-sm mb-2">Verification Documents</p>
+                      <div className="space-y-2">
+                        {userDetails?.verificationDocument ? (
+                          <div className="flex items-center justify-between p-2 bg-slate-700/30 rounded">
+                            <div className="flex items-center gap-2">
+                              <i className="bi bi-file-earmark-text text-blue-400"></i>
+                              <span className="text-white text-sm">ID Document</span>
+                            </div>
+                            <a
+                              href={userDetails.verificationDocument}
+                              target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 text-sm"
+                              className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
                             >
-                              View
+                              <i className="bi bi-eye"></i> View
                             </a>
                           </div>
-                        )}
-                        {userDetails?.addressDocument && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-white text-sm">Address Document</span>
-                            <a 
-                              href={userDetails.addressDocument} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 text-sm"
-                            >
-                              View
-                            </a>
+                        ) : (
+                          <div className="p-2 bg-slate-700/30 rounded text-white/40 text-sm">
+                            <i className="bi bi-file-earmark-x"></i> No ID document uploaded
                           </div>
                         )}
+
+                        {userDetails?.addressDocument ? (
+                          <div className="flex items-center justify-between p-2 bg-slate-700/30 rounded">
+                            <div className="flex items-center gap-2">
+                              <i className="bi bi-file-earmark-text text-green-400"></i>
+                              <span className="text-white text-sm">Address Proof</span>
+                            </div>
+                            <a
+                              href={userDetails.addressDocument}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
+                            >
+                              <i className="bi bi-eye"></i> View
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="p-2 bg-slate-700/30 rounded text-white/40 text-sm">
+                            <i className="bi bi-file-earmark-x"></i> No address document uploaded
+                          </div>
+                        )}
+
                         {userDetails?.employmentContract && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-white text-sm">Employment Contract</span>
-                            <a 
-                              href={userDetails.employmentContract} 
-                              target="_blank" 
+                          <div className="flex items-center justify-between p-2 bg-slate-700/30 rounded">
+                            <div className="flex items-center gap-2">
+                              <i className="bi bi-file-earmark-text text-purple-400"></i>
+                              <span className="text-white text-sm">Employment Contract</span>
+                            </div>
+                            <a
+                              href={userDetails.employmentContract}
+                              target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-400 hover:text-blue-300 text-sm"
+                              className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
                             >
-                              View
+                              <i className="bi bi-eye"></i> View
                             </a>
                           </div>
                         )}
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-800/50 p-4 rounded">
+                      <p className="text-white/60 text-sm mb-2">Account Information</p>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-white/60">Provider:</span>
+                          <span className="text-white capitalize">{userDetails?.provider || 'manual'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-white/60">2FA Enabled:</span>
+                          <span className={`${userDetails?.twoFactorEnabled ? 'text-green-400' : 'text-red-400'}`}>
+                            {userDetails?.twoFactorEnabled ? '✓ Yes' : '✗ No'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -897,15 +1118,85 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
             {activeTab === 'activity' && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">Activity Overview</h3>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-slate-800/50 p-4 rounded">
-                    <p className="text-white/60 text-sm">Total Bookings</p>
-                    <p className="text-white text-2xl font-bold">{userDetails?.totalBookings || 0}</p>
+
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 p-6 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/60 text-sm">Total Bookings</p>
+                        <p className="text-white text-2xl font-bold">{userDetails?.totalBookings || 0}</p>
+                      </div>
+                      <div className="bg-blue-500/20 p-3 rounded-xl">
+                        <i className="bi bi-calendar-check text-blue-400 text-xl"></i>
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-slate-800/50 p-4 rounded">
-                    <p className="text-white/60 text-sm">Average Rating</p>
-                    <p className="text-white text-2xl font-bold">{userDetails?.averageRating || 0} ★</p>
+
+                  <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 p-6 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/60 text-sm">Average Rating</p>
+                        <p className="text-white text-2xl font-bold">{userDetails?.averageRating || 0} ★</p>
+                      </div>
+                      <div className="bg-purple-500/20 p-3 rounded-xl">
+                        <i className="bi bi-star-fill text-purple-400 text-xl"></i>
+                      </div>
+                    </div>
                   </div>
+
+                  <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 p-6 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/60 text-sm">Total Sessions</p>
+                        <p className="text-white text-2xl font-bold">{userDetails?.profile?.totalSessions || 0}</p>
+                      </div>
+                      <div className="bg-green-500/20 p-3 rounded-xl">
+                        <i className="bi bi-clock-history text-green-400 text-xl"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800/50 p-6 rounded-lg">
+                  <h4 className="text-white font-medium mb-4">Recent Activity</h4>
+                  {userDetails?.recentActivity && userDetails.recentActivity.length > 0 ? (
+                    <div className="space-y-3">
+                      {userDetails.recentActivity.map((activity: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-slate-700/30 rounded">
+                          <div className="flex items-center gap-3">
+                            <i className="bi bi-circle-fill text-blue-400 text-xs"></i>
+                            <div>
+                              <p className="text-white text-sm">{activity.action || activity.type}</p>
+                              <p className="text-white/60 text-xs">{formatDate(activity.timestamp || activity.createdAt, true)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-white/40 text-sm italic">No recent activity recorded</p>
+                  )}
+                </div>
+
+                <div className="bg-slate-800/50 p-6 rounded-lg">
+                  <h4 className="text-white font-medium mb-4">Session History</h4>
+                  {userDetails?.sessions && userDetails.sessions.length > 0 ? (
+                    <div className="space-y-2">
+                      {userDetails.sessions.slice(0, 5).map((session: any, index: number) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-slate-700/30 rounded text-sm">
+                          <span className="text-white/60">Session #{session.id}</span>
+                          <span className="text-white">{formatDate(session.createdAt || session.timestamp, true)}</span>
+                        </div>
+                      ))}
+                      {userDetails.sessions.length > 5 && (
+                        <p className="text-white/40 text-xs text-center pt-2">
+                          +{userDetails.sessions.length - 5} more sessions
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-white/40 text-sm italic">No sessions recorded</p>
+                  )}
                 </div>
               </div>
             )}
@@ -927,9 +1218,97 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
             {activeTab === 'financial' && (
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold text-white">Financial Information</h3>
-                <div className="bg-slate-800/50 p-6 rounded">
-                  <p className="text-white/60">
-                    Wallet balance, transaction history, earnings, and payout information would be displayed here.
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 p-6 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/60 text-sm">Total Earnings</p>
+                        <p className="text-white text-2xl font-bold">
+                          ${userDetails?.metrics?.totalEarnings?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div className="bg-green-500/20 p-3 rounded-xl">
+                        <i className="bi bi-cash-stack text-green-400 text-2xl"></i>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 p-6 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/60 text-sm">Pending Payouts</p>
+                        <p className="text-white text-2xl font-bold">
+                          ${userDetails?.metrics?.pendingPayouts?.toFixed(2) || '0.00'}
+                        </p>
+                      </div>
+                      <div className="bg-yellow-500/20 p-3 rounded-xl">
+                        <i className="bi bi-clock-history text-yellow-400 text-2xl"></i>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 p-6 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/60 text-sm">Completed Transactions</p>
+                        <p className="text-white text-2xl font-bold">
+                          {userDetails?.metrics?.completedTransactions || 0}
+                        </p>
+                      </div>
+                      <div className="bg-blue-500/20 p-3 rounded-xl">
+                        <i className="bi bi-check-circle text-blue-400 text-2xl"></i>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-red-500/10 to-rose-500/10 border border-red-500/30 p-6 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white/60 text-sm">Disputed Transactions</p>
+                        <p className="text-white text-2xl font-bold">
+                          {userDetails?.metrics?.disputedTransactions || 0}
+                        </p>
+                      </div>
+                      <div className="bg-red-500/20 p-3 rounded-xl">
+                        <i className="bi bi-exclamation-triangle text-red-400 text-2xl"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800/50 p-6 rounded-lg">
+                  <h4 className="text-white font-medium mb-4">Transaction Summary</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-slate-700/30 rounded">
+                      <p className="text-white/60 text-sm">Success Rate</p>
+                      <p className="text-white text-xl font-bold">
+                        {userDetails?.metrics?.completedTransactions && userDetails?.metrics?.disputedTransactions
+                          ? ((userDetails.metrics.completedTransactions / (userDetails.metrics.completedTransactions + userDetails.metrics.disputedTransactions)) * 100).toFixed(1)
+                          : '100'}%
+                      </p>
+                    </div>
+                    <div className="text-center p-4 bg-slate-700/30 rounded">
+                      <p className="text-white/60 text-sm">Average per Transaction</p>
+                      <p className="text-white text-xl font-bold">
+                        ${userDetails?.metrics?.totalEarnings && userDetails?.metrics?.completedTransactions
+                          ? (userDetails.metrics.totalEarnings / userDetails.metrics.completedTransactions).toFixed(2)
+                          : '0.00'}
+                      </p>
+                    </div>
+                    <div className="text-center p-4 bg-slate-700/30 rounded">
+                      <p className="text-white/60 text-sm">Total Sessions</p>
+                      <p className="text-white text-xl font-bold">
+                        {userDetails?.profile?.totalSessions || 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-800/50 p-6 rounded-lg">
+                  <h4 className="text-white font-medium mb-2">Recent Transactions</h4>
+                  <p className="text-white/40 text-sm italic">
+                    Transaction history integration pending
                   </p>
                 </div>
               </div>
