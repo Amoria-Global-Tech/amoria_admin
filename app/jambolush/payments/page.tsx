@@ -121,16 +121,28 @@ interface EscrowTransaction {
 interface WithdrawalRequest {
   id: string;
   userId: number;
+  userName: string;
+  userEmail: string;
   amount: number;
   currency: string;
   method: string;
   status: string;
-  destination: any;
+  destination: string | {
+    holderName?: string;
+    accountNumber?: string;
+    phoneNumber?: string;
+    email?: string;
+    providerCode?: string;
+    providerName?: string;
+    providerType?: string;
+    countryCode?: string;
+    bankName?: string;
+  };
   pesapalPayoutId?: string;
   reference: string;
   failureReason?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   completedAt?: string;
   metadata?: any;
   user?: {
@@ -178,7 +190,7 @@ interface WithdrawalMethodRequest {
   userId: number;
   methodType: string;
   accountName: string;
-  accountDetails: {
+  accountDetails: string | {
     country: string;
     currency: string;
     providerId: string;
@@ -732,16 +744,22 @@ const TransactionDetailsModal = ({
                   <div>
                     <p className="text-white/60 text-sm">Destination</p>
                     <p className="text-white font-medium">
-                      {(transaction as WithdrawalRequest).destination?.accountNumber || 
-                       (transaction as WithdrawalRequest).destination?.phoneNumber || 'N/A'}
+                      {(() => {
+                        const dest = (transaction as WithdrawalRequest).destination;
+                        if (typeof dest === 'string') return dest;
+                        return dest?.accountNumber || dest?.phoneNumber || 'N/A';
+                      })()}
                     </p>
                   </div>
-                  {(transaction as WithdrawalRequest).destination?.holderName && (
-                    <div>
-                      <p className="text-white/60 text-sm">Account Holder</p>
-                      <p className="text-white font-medium">{(transaction as WithdrawalRequest).destination.holderName}</p>
-                    </div>
-                  )}
+                  {(() => {
+                    const dest = (transaction as WithdrawalRequest).destination;
+                    return typeof dest !== 'string' && dest?.holderName && (
+                      <div>
+                        <p className="text-white/60 text-sm">Account Holder</p>
+                        <p className="text-white font-medium">{dest.holderName}</p>
+                      </div>
+                    );
+                  })()}
                   {(transaction as WithdrawalRequest).pesapalPayoutId && (
                     <div>
                       <p className="text-white/60 text-sm">Pesapal Payout ID</p>
@@ -765,7 +783,7 @@ const TransactionDetailsModal = ({
                 </div>
                 <div>
                   <p className="text-white/60 text-sm">Last Updated</p>
-                  <p className="text-white">{formatDate(transaction.updatedAt)}</p>
+                  <p className="text-white">{transaction.updatedAt ? formatDate(transaction.updatedAt) : 'N/A'}</p>
                 </div>
                 {isPaymentTransaction(transaction) && transaction.completedAt && (
                   <div>
@@ -1056,6 +1074,18 @@ const MethodRequestModal = ({
   const [rejectionReason, setRejectionReason] = useState('');
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
+  // Helper function to parse accountDetails if it's a string
+  const parseAccountDetails = (accountDetails: string | object): any => {
+    if (typeof accountDetails === 'string') {
+      try {
+        return JSON.parse(accountDetails);
+      } catch {
+        return {};
+      }
+    }
+    return accountDetails;
+  };
+
   if (!method) return null;
 
   const handleApprove = async () => {
@@ -1086,7 +1116,7 @@ const MethodRequestModal = ({
     setLoadingAction(null);
   };
 
-  const details = method.accountDetails;
+  const details = parseAccountDetails(method.accountDetails);
   const user = method.user;
 
   return (
@@ -1230,6 +1260,18 @@ const MethodRequestModal = ({
 
 // Main Finance Admin Component
 const FinanceAdminPage = () => {
+  // Helper function to parse accountDetails if it's a string
+  const parseAccountDetails = (accountDetails: string | object): any => {
+    if (typeof accountDetails === 'string') {
+      try {
+        return JSON.parse(accountDetails);
+      } catch {
+        return {};
+      }
+    }
+    return accountDetails;
+  };
+
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1704,6 +1746,17 @@ const FinanceAdminPage = () => {
     }
   };
 
+  const parseDestination = (destination: string | any) => {
+    if (typeof destination === 'string') {
+      try {
+        return JSON.parse(destination);
+      } catch (e) {
+        return null;
+      }
+    }
+    return destination;
+  };
+
   const renderOverview = () => {
     // Show loading state if no analytics data
     if (!analyticsData) {
@@ -1797,7 +1850,7 @@ const FinanceAdminPage = () => {
                   <div key={withdrawal.id} className="flex justify-between items-center p-3 bg-yellow-500/10 rounded-lg">
                     <div>
                       <p className="text-white text-sm font-medium">{withdrawal.reference}</p>
-                      <p className="text-white/60 text-xs">{withdrawal.user?.email || 'N/A'}</p>
+                      <p className="text-white/60 text-xs">{withdrawal.userEmail || withdrawal.user?.email || 'N/A'}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-yellow-400 font-medium">{formatCurrency(withdrawal.amount, withdrawal.currency)}</p>
@@ -1918,10 +1971,12 @@ const FinanceAdminPage = () => {
               Pending Method Requests
             </h3>
             <div className="space-y-3">
-              {methodRequests.slice(0, 5).map(method => (
+              {methodRequests.slice(0, 5).map(method => {
+                const details = parseAccountDetails(method.accountDetails);
+                return (
                 <div key={method.id} className="flex justify-between items-center p-3 bg-blue-500/10 rounded-lg">
                   <div>
-                    <p className="text-white text-sm font-medium">{method.accountDetails.providerName}</p>
+                    <p className="text-white text-sm font-medium">{details.providerName}</p>
                     <p className="text-white/60 text-xs">{method.user?.email || 'N/A'}</p>
                   </div>
                   <div className="text-right">
@@ -1934,7 +1989,8 @@ const FinanceAdminPage = () => {
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
               {methodRequests.length === 0 && (
                 <p className="text-white/40 text-center py-4">No pending method requests</p>
               )}
@@ -1952,7 +2008,7 @@ const FinanceAdminPage = () => {
                 <div key={withdrawal.id} className="flex justify-between items-center p-3 bg-yellow-500/10 rounded-lg">
                   <div>
                     <p className="text-white text-sm font-medium">{withdrawal.reference}</p>
-                    <p className="text-white/60 text-xs">{withdrawal.user?.email || 'N/A'}</p>
+                    <p className="text-white/60 text-xs">{withdrawal.userEmail || withdrawal.user?.email || 'N/A'}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-yellow-400 font-medium">{formatCurrency(withdrawal.amount, withdrawal.currency)}</p>
@@ -2330,10 +2386,10 @@ const FinanceAdminPage = () => {
                                 <td className="px-6 py-4">
                                   <div>
                                     <div className="text-white text-sm">
-                                      {withdrawal.user ? `${withdrawal.user.firstName} ${withdrawal.user.lastName}` : `User ${withdrawal.userId}`}
+                                      {withdrawal.userName || (withdrawal.user ? `${withdrawal.user.firstName} ${withdrawal.user.lastName}` : `User ${withdrawal.userId}`)}
                                     </div>
-                                    {withdrawal.user?.email && (
-                                      <div className="text-white/60 text-xs">{withdrawal.user.email}</div>
+                                    {(withdrawal.userEmail || withdrawal.user?.email) && (
+                                      <div className="text-white/60 text-xs">{withdrawal.userEmail || withdrawal.user?.email}</div>
                                     )}
                                   </div>
                                 </td>
@@ -2348,14 +2404,19 @@ const FinanceAdminPage = () => {
                                   </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                  <div className="text-white text-sm">
-                                    {withdrawal.destination?.accountNumber || 
-                                     withdrawal.destination?.phoneNumber || 
-                                     withdrawal.destination?.email || 'N/A'}
-                                  </div>
-                                  {withdrawal.destination?.bankName && (
-                                    <div className="text-white/60 text-xs">{withdrawal.destination.bankName}</div>
-                                  )}
+                                  {(() => {
+                                    const dest = parseDestination(withdrawal.destination);
+                                    return (
+                                      <>
+                                        <div className="text-white text-sm">
+                                          {dest?.accountNumber || dest?.phoneNumber || dest?.email || 'N/A'}
+                                        </div>
+                                        {(dest?.providerName || dest?.bankName) && (
+                                          <div className="text-white/60 text-xs">{dest.providerName || dest.bankName}</div>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </td>
                                 <td className="px-6 py-4">
                                   <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(withdrawal.status)}`}>
@@ -2625,7 +2686,9 @@ const FinanceAdminPage = () => {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-700">
-                            {methodRequests.map((method) => (
+                            {methodRequests.map((method) => {
+                              const details = parseAccountDetails(method.accountDetails);
+                              return (
                               <tr key={method.id} className="hover:bg-slate-800/30">
                                 <td className="px-6 py-4">
                                   <div className="text-white font-mono text-xs">{method.id}</div>
@@ -2644,13 +2707,13 @@ const FinanceAdminPage = () => {
                                   </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                  <span className="text-white text-sm">{method.accountDetails.providerName}</span>
+                                  <span className="text-white text-sm">{details.providerName}</span>
                                 </td>
                                 <td className="px-6 py-4">
                                   <span className="text-white text-sm">{method.accountName}</span>
                                 </td>
                                 <td className="px-6 py-4">
-                                  <span className="text-white font-mono text-sm">{method.accountDetails.accountNumber}</span>
+                                  <span className="text-white font-mono text-sm">{details.accountNumber}</span>
                                 </td>
                                 <td className="px-6 py-4 text-white/70 text-sm">
                                   {formatDate(method.createdAt)}
@@ -2667,7 +2730,8 @@ const FinanceAdminPage = () => {
                                   </div>
                                 </td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
