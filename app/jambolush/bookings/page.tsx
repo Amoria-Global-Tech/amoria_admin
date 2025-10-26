@@ -565,24 +565,24 @@ const BookingGrid = ({ bookings, onViewDetails, onBookingAction }: {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {bookings.map(booking => (
         <div key={booking.id} className="bg-[#0b1c36]/80 border border-slate-700/50 p-5 rounded-lg shadow-lg">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <h3 className="text-white font-bold text-lg truncate">{booking.resourceName}</h3>
-              <p className="text-white/60 text-sm">ID: {booking.id}</p>
+          <div className="flex justify-between items-start mb-4 gap-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="text-white font-bold text-lg truncate" title={booking.resourceName}>{booking.resourceName}</h3>
+              <p className="text-white/60 text-sm truncate" title={booking.id}>ID: {booking.id}</p>
               <p className="text-white/60 text-sm">Type: {booking.type}</p>
             </div>
-            <div className="flex flex-col gap-2">
-              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+            <div className="flex flex-col gap-2 flex-shrink-0">
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap ${
                 booking.type === 'property' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
               }`}>
                 {booking.type}
               </span>
-              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getStatusColor(booking.status)}`}>
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap ${getStatusColor(booking.status)}`}>
                 {booking.status}
               </span>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-3 gap-4 text-center border-y border-slate-700/50 py-3 mb-4">
             <div>
               <p className="text-white/60 text-xs">Amount</p>
@@ -603,16 +603,16 @@ const BookingGrid = ({ bookings, onViewDetails, onBookingAction }: {
           </div>
 
           <div className="space-y-2 text-sm text-white/60 mb-4">
-            <div className="flex justify-between">
-              <span>Guest:</span>
-              <span className="text-white truncate">{booking.guestName}</span>
+            <div className="flex justify-between gap-2 min-w-0">
+              <span className="flex-shrink-0">Guest:</span>
+              <span className="text-white truncate text-right" title={booking.guestName}>{booking.guestName}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Provider:</span>
-              <span className="text-white truncate">{booking.providerName}</span>
+            <div className="flex justify-between gap-2 min-w-0">
+              <span className="flex-shrink-0">Provider:</span>
+              <span className="text-white truncate text-right" title={booking.providerName}>{booking.providerName}</span>
             </div>
-            <div className="flex justify-between">
-              <span>Created:</span>
+            <div className="flex justify-between gap-2">
+              <span className="flex-shrink-0">Created:</span>
               <span className="text-white">{formatDate(booking.createdAt, true)}</span>
             </div>
           </div>
@@ -620,28 +620,28 @@ const BookingGrid = ({ bookings, onViewDetails, onBookingAction }: {
           <div className="flex gap-2">
             <button
               onClick={() => onViewDetails(booking)}
-              className="flex-1 text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 px-3 py-2 rounded-md"
+              className="flex-1 text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 px-3 py-2 rounded-md whitespace-nowrap"
             >
               View Details
             </button>
             {booking.status === 'pending' ? (
               <button
                 onClick={() => onBookingAction('confirm', booking)}
-                className="text-sm bg-green-500/20 text-green-400 hover:bg-green-500/40 px-3 py-2 rounded-md"
+                className="text-sm bg-green-500/20 text-green-400 hover:bg-green-500/40 px-3 py-2 rounded-md whitespace-nowrap"
               >
                 Confirm
               </button>
             ) : booking.status === 'confirmed' ? (
               <button
                 onClick={() => onBookingAction('complete', booking)}
-                className="text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 px-3 py-2 rounded-md"
+                className="text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 px-3 py-2 rounded-md whitespace-nowrap"
               >
                 Complete
               </button>
             ) : (
               <button
                 onClick={() => onBookingAction('cancel', booking)}
-                className="text-sm bg-red-500/20 text-red-400 hover:bg-red-500/40 px-3 py-2 rounded-md"
+                className="text-sm bg-red-500/20 text-red-400 hover:bg-red-500/40 px-3 py-2 rounded-md whitespace-nowrap"
                 disabled={booking.status === 'cancelled'}
               >
                 Cancel
