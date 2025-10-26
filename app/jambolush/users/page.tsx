@@ -28,6 +28,10 @@ interface User {
     state?: string;
     province?: string;
     country?: string;
+    county?: string;
+    district?: string;
+    region?: string;
+    sector?: string;
     zipCode?: string;
     postalCode?: string;
     postcode?: string;
@@ -55,6 +59,8 @@ interface User {
     isVerified: boolean;
     verificationDocument?: string;
     addressDocument?: string;
+    nationalId?: string;
+    passportPhotoUrl?: string;
     kycCompleted: boolean;
     kycSubmittedAt?: string;
     twoFactorEnabled: boolean;
@@ -440,6 +446,8 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
         // Flatten verification
         verificationDocument: data.verification?.verificationDocument || data.verificationDocument,
         addressDocument: data.verification?.addressDocument || data.addressDocument,
+        nationalId: data.verification?.nationalId || data.nationalId,
+        passportPhotoUrl: data.verification?.passportPhotoUrl || data.passportPhotoUrl,
         kycCompleted: data.verification?.kycCompleted || data.kycCompleted,
         twoFactorEnabled: data.verification?.twoFactorEnabled || data.twoFactorEnabled,
       };
@@ -629,6 +637,22 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                   </button>
                 </div>
 
+                {/* Profile Image */}
+                {userDetails?.profileImage && (
+                  <div className="flex justify-center">
+                    <div className="relative">
+                      <img
+                        src={userDetails.profileImage}
+                        alt={`${userDetails.firstName} ${userDetails.lastName}`}
+                        className="w-32 h-32 rounded-full object-cover border-4 border-blue-500/30"
+                      />
+                      <div className="absolute bottom-0 right-0 bg-blue-600 rounded-full p-2">
+                        <i className="bi bi-camera-fill text-white"></i>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
                     <div>
@@ -772,23 +796,11 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                 {userDetails?.address && (
                   <div className="border-t border-slate-700 pt-6">
                     <h4 className="text-white font-medium mb-4">Address Information</h4>
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-3 gap-6">
                       <div className="space-y-4">
                         <div>
                           <label className="block text-white/60 text-sm mb-1">Street</label>
-                          {editMode ? (
-                            <input
-                              type="text"
-                              value={formData.address?.street || ''}
-                              onChange={(e) => setFormData({
-                                ...formData,
-                                address: { ...formData.address, street: e.target.value }
-                              })}
-                              className="w-full bg-slate-800/60 border border-slate-700 rounded px-3 py-2 text-white"
-                            />
-                          ) : (
-                            <p className="text-white">{userDetails.address.street || 'N/A'}</p>
-                          )}
+                          <p className="text-white">{userDetails.address.street || 'N/A'}</p>
                         </div>
 
                         <div>
@@ -800,6 +812,11 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                           <label className="block text-white/60 text-sm mb-1">Province/State</label>
                           <p className="text-white">{userDetails.address.province || userDetails.address.state || 'N/A'}</p>
                         </div>
+
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">District</label>
+                          <p className="text-white">{userDetails.address.district || 'N/A'}</p>
+                        </div>
                       </div>
 
                       <div className="space-y-4">
@@ -808,6 +825,23 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                           <p className="text-white">{userDetails.address.country || 'N/A'}</p>
                         </div>
 
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">County</label>
+                          <p className="text-white">{userDetails.address.county || 'N/A'}</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Region</label>
+                          <p className="text-white">{userDetails.address.region || 'N/A'}</p>
+                        </div>
+
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Sector</label>
+                          <p className="text-white">{userDetails.address.sector || 'N/A'}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
                         <div>
                           <label className="block text-white/60 text-sm mb-1">Postal/Zip Code</label>
                           <p className="text-white">
@@ -820,6 +854,37 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                              'N/A'}
                           </p>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Business Information for Agents and Hosts */}
+                {(userDetails?.userType === 'agent' || userDetails?.userType === 'host') && (
+                  <div className="border-t border-slate-700 pt-6">
+                    <h4 className="text-white font-medium mb-4">Business Information</h4>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Company Name</label>
+                          <p className="text-white">{userDetails.companyName || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Company TIN</label>
+                          <p className="text-white font-mono">{userDetails.companyTIN || 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">License Number</label>
+                          <p className="text-white">{userDetails.licenseNumber || 'N/A'}</p>
+                        </div>
+                        {userDetails.bio && (
+                          <div>
+                            <label className="block text-white/60 text-sm mb-1">Bio</label>
+                            <p className="text-white">{userDetails.bio}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -848,6 +913,10 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                           <label className="block text-white/60 text-sm mb-1">Experience (years)</label>
                           <p className="text-white">{userDetails.experience || 0}</p>
                         </div>
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Company Name</label>
+                          <p className="text-white">{userDetails.companyName || 'N/A'}</p>
+                        </div>
                       </div>
                       <div className="space-y-4">
                         <div>
@@ -860,8 +929,34 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                             {userDetails.languages?.join(', ') || 'N/A'}
                           </p>
                         </div>
+                        <div>
+                          <label className="block text-white/60 text-sm mb-1">Specializations</label>
+                          <p className="text-white">
+                            {userDetails.specializations?.join(', ') || 'N/A'}
+                          </p>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Employment Contract for Employed Tour Guides */}
+                    {userDetails.tourGuideType === 'employed' && (
+                      <div className="mt-4">
+                        <label className="block text-white/60 text-sm mb-1">Employment Contract</label>
+                        {userDetails.employmentContract ? (
+                          <a
+                            href={userDetails.employmentContract}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300"
+                          >
+                            <i className="bi bi-file-earmark-text"></i>
+                            View Employment Contract
+                          </a>
+                        ) : (
+                          <p className="text-white/40 text-sm">No employment contract uploaded</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -967,6 +1062,51 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                     <div className="bg-slate-800/50 p-4 rounded">
                       <p className="text-white/60 text-sm mb-2">Verification Documents</p>
                       <div className="space-y-2">
+                        {/* National ID */}
+                        {userDetails?.nationalId ? (
+                          <div className="flex items-center justify-between p-2 bg-slate-700/30 rounded">
+                            <div className="flex items-center gap-2">
+                              <i className="bi bi-card-text text-indigo-400"></i>
+                              <span className="text-white text-sm">National ID</span>
+                            </div>
+                            <span className="text-white/80 text-sm font-mono">{userDetails.nationalId}</span>
+                          </div>
+                        ) : (
+                          <div className="p-2 bg-slate-700/30 rounded text-white/40 text-sm">
+                            <i className="bi bi-card-text"></i> No National ID provided
+                          </div>
+                        )}
+
+                        {/* Passport Photo */}
+                        {userDetails?.verification?.passportPhotoUrl ? (
+                          <div className="p-2 bg-slate-700/30 rounded">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <i className="bi bi-person-bounding-box text-cyan-400"></i>
+                                <span className="text-white text-sm">Passport Photo</span>
+                              </div>
+                              <a
+                                href={userDetails.verification.passportPhotoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
+                              >
+                                <i className="bi bi-eye"></i> View
+                              </a>
+                            </div>
+                            <img
+                              src={userDetails.verification.passportPhotoUrl}
+                              alt="Passport Photo"
+                              className="w-24 h-24 object-cover rounded border border-cyan-400/30"
+                            />
+                          </div>
+                        ) : (
+                          <div className="p-2 bg-slate-700/30 rounded text-white/40 text-sm">
+                            <i className="bi bi-person-bounding-box"></i> No passport photo uploaded
+                          </div>
+                        )}
+
+                        {/* ID Document */}
                         {userDetails?.verificationDocument ? (
                           <div className="flex items-center justify-between p-2 bg-slate-700/30 rounded">
                             <div className="flex items-center gap-2">
@@ -988,6 +1128,7 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                           </div>
                         )}
 
+                        {/* Address Document */}
                         {userDetails?.addressDocument ? (
                           <div className="flex items-center justify-between p-2 bg-slate-700/30 rounded">
                             <div className="flex items-center gap-2">
@@ -1009,6 +1150,7 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
                           </div>
                         )}
 
+                        {/* Employment Contract */}
                         {userDetails?.employmentContract && (
                           <div className="flex items-center justify-between p-2 bg-slate-700/30 rounded">
                             <div className="flex items-center gap-2">
@@ -1387,15 +1529,30 @@ const UserGrid = ({ users, onViewDetails, onUserAction }: {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {users.map(user => (
         <div key={user.id} className="bg-[#0b1c36]/80 border border-slate-700/50 p-5 rounded-lg shadow-lg">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <h3 className="text-white font-bold text-lg">{user.firstName} {user.lastName}</h3>
-              <p className="text-white/60 text-sm">{user.email}</p>
+          <div className="flex gap-3 items-start mb-4">
+            {/* Profile Image */}
+            <div className="flex-shrink-0">
+              {user.profileImage ? (
+                <img
+                  src={user.profileImage}
+                  alt={`${user.firstName} ${user.lastName}`}
+                  className="w-16 h-16 rounded-full object-cover border-2 border-blue-500/30"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl">
+                  {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h3 className="text-white font-bold text-lg truncate">{user.firstName} {user.lastName}</h3>
+              <p className="text-white/60 text-sm truncate">{user.email}</p>
               {user.phone && (
                 <p className="text-white/60 text-sm">{user.phoneCountryCode}{user.phone}</p>
               )}
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 flex-shrink-0">
               <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
                 user.userType === 'host' ? 'bg-blue-500/20 text-blue-400' :
                 user.userType === 'agent' ? 'bg-green-500/20 text-green-400' :
@@ -1498,9 +1655,22 @@ const UserTable = ({ users, onViewDetails, onUserAction }: {
             {users.map(user => (
               <tr key={user.id} className="border-t border-slate-800 hover:bg-slate-800/40">
                 <td className="p-4">
-                  <div>
-                    <div className="font-medium text-white">{user.firstName} {user.lastName}</div>
-                    <div className="text-white/60 text-xs">{user.email}</div>
+                  <div className="flex items-center gap-3">
+                    {user.profileImage ? (
+                      <img
+                        src={user.profileImage}
+                        alt={`${user.firstName} ${user.lastName}`}
+                        className="w-10 h-10 rounded-full object-cover border border-blue-500/30"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                        {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                      </div>
+                    )}
+                    <div>
+                      <div className="font-medium text-white">{user.firstName} {user.lastName}</div>
+                      <div className="text-white/60 text-xs">{user.email}</div>
+                    </div>
                   </div>
                 </td>
                 <td className="p-4">
