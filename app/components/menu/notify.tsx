@@ -3,18 +3,31 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface AlertNotificationProps {
   message: string;
-  type: "success" | "error" | "info";
+  type: "success" | "error" | "info" | "warning";
+  onClose?: () => void;
+  duration?: number;
 }
 
-const AlertNotification: React.FC<AlertNotificationProps> = ({ message, type}) => {
+const AlertNotification: React.FC<AlertNotificationProps> = ({
+  message,
+  type,
+  onClose,
+  duration = 10000
+}) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-    }, 10000);
+      onClose?.();
+    }, duration);
     return () => clearTimeout(timer);
-  }, []);
+  }, [duration, onClose]);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    onClose?.();
+  };
 
   const getBackgroundColor = () => {
     switch (type) {
@@ -24,6 +37,8 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ message, type}) =
         return "bg-red-400";
       case "info":
         return "bg-gray-300";
+      case "warning":
+        return "bg-yellow-400";
       default:
         return "bg-gray-400";
     }
@@ -40,11 +55,11 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ message, type}) =
           >
             <div className={`px-6 py-3 rounded-md text-white flex justify-self-center ${getBackgroundColor()} `}>
               <span >{message}</span>
-              <button onClick={() => setIsVisible(false)}>
+              <button onClick={handleClose}>
                 <i className="bi bi-x-circle w-5 h-5 ml-2" />
               </button>
             </div>
-          
+
         </motion.div>
       )}
     </AnimatePresence>

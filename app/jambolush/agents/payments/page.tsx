@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../../api/jambolush/api-conn';
+import { usePreventDoubleClick } from '@/app/hooks/usePreventDoubleClick';
+import AlertNotification from '@/app/components/menu/notify';
 
 // Types
 interface FieldAgentPayment {
@@ -79,6 +81,20 @@ const FieldAgentPaymentsPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [goToPageInput, setGoToPageInput] = useState('');
   const [selectedPayments, setSelectedPayments] = useState<Set<string>>(new Set());
+
+  // Alert notification state
+  const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
+
+  // Double-click prevention hooks
+  const { isProcessing: isProcessingSingle, withPreventDoubleClick: wrapSingleAction } = usePreventDoubleClick({
+    cooldownMs: 2000,
+    onCooldownClick: () => setAlert({ message: 'Please wait, action is already being processed...', type: 'warning' })
+  });
+
+  const { isProcessing: isProcessingBulk, withPreventDoubleClick: wrapBulkAction } = usePreventDoubleClick({
+    cooldownMs: 2000,
+    onCooldownClick: () => setAlert({ message: 'Please wait, bulk action is already being processed...', type: 'warning' })
+  });
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -316,50 +332,54 @@ const FieldAgentPaymentsPage: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleStatusUpdate = async (paymentId: string, newStatus: FieldAgentPayment['status']) => {
+  const handleStatusUpdate = wrapSingleAction(async (paymentId: string, newStatus: FieldAgentPayment['status']) => {
     try {
       const response = await api.patch(`/field-agents/payments/${paymentId}/status`, {
         status: newStatus
       });
-      
+
       if (response.success) {
-        setPayments(prev => prev.map(p => 
+        setPayments(prev => prev.map(p =>
           p.id === paymentId ? { ...p, status: newStatus, updatedAt: new Date() } : p
         ));
+        setAlert({ message: `Payment status updated to ${newStatus} successfully!`, type: 'success' });
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
+      setAlert({ message: 'Failed to update payment status', type: 'error' });
       // For demo, update locally
-      setPayments(prev => prev.map(p => 
+      setPayments(prev => prev.map(p =>
         p.id === paymentId ? { ...p, status: newStatus, updatedAt: new Date() } : p
       ));
     }
-  };
+  });
 
-  const handleBulkStatusUpdate = async (status: FieldAgentPayment['status']) => {
+  const handleBulkStatusUpdate = wrapBulkAction(async (status: FieldAgentPayment['status']) => {
     if (selectedPayments.size === 0) return;
-    
+
     try {
       const response = await api.patch('/field-agents/payments/bulk-status', {
         paymentIds: Array.from(selectedPayments),
         status
       });
-      
+
       if (response.success) {
-        setPayments(prev => prev.map(p => 
+        setPayments(prev => prev.map(p =>
           selectedPayments.has(p.id) ? { ...p, status, updatedAt: new Date() } : p
         ));
         setSelectedPayments(new Set());
+        setAlert({ message: `${selectedPayments.size} payments updated to ${status} successfully!`, type: 'success' });
       }
     } catch (error) {
       console.error('Error updating bulk payment status:', error);
+      setAlert({ message: 'Failed to update bulk payment status', type: 'error' });
       // For demo, update locally
-      setPayments(prev => prev.map(p => 
+      setPayments(prev => prev.map(p =>
         selectedPayments.has(p.id) ? { ...p, status, updatedAt: new Date() } : p
       ));
       setSelectedPayments(new Set());
     }
-  };
+  });
 
   const handleGoToPage = (value: string) => {
     const page = parseInt(value);
@@ -455,16 +475,18 @@ const FieldAgentPaymentsPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleBulkStatusUpdate('completed')}
-                    className="bg-green-500/20 text-green-400 px-4 py-3 rounded-xl font-semibold hover:bg-green-500/30 transition-colors flex items-center gap-2"
+                    disabled={isProcessingBulk}
+                    className={`bg-green-500/20 text-green-400 px-4 py-3 rounded-xl font-semibold hover:bg-green-500/30 transition-colors flex items-center gap-2 ${isProcessingBulk ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <i className="bi bi-check-circle"></i>
+                    {isProcessingBulk ? <i className="bi bi-hourglass-split animate-spin"></i> : <i className="bi bi-check-circle"></i>}
                     Mark Completed ({selectedPayments.size})
                   </button>
                   <button
                     onClick={() => handleBulkStatusUpdate('failed')}
-                    className="bg-red-500/20 text-red-400 px-4 py-3 rounded-xl font-semibold hover:bg-red-500/30 transition-colors flex items-center gap-2"
+                    disabled={isProcessingBulk}
+                    className={`bg-red-500/20 text-red-400 px-4 py-3 rounded-xl font-semibold hover:bg-red-500/30 transition-colors flex items-center gap-2 ${isProcessingBulk ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <i className="bi bi-x-circle"></i>
+                    {isProcessingBulk ? <i className="bi bi-hourglass-split animate-spin"></i> : <i className="bi bi-x-circle"></i>}
                     Mark Failed ({selectedPayments.size})
                   </button>
                 </div>
@@ -1255,6 +1277,15 @@ const FieldAgentPaymentsPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Alert Notification */}
+      {alert && (
+        <AlertNotification
+          message={alert.message}
+          type={alert.type}
+          onClose={() => setAlert(null)}
+        />
       )}
     </div>
   );
