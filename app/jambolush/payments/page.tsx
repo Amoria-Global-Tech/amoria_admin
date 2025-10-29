@@ -1720,10 +1720,10 @@ const FinanceAdminPage = () => {
         message,
         type: 'transaction_update'
       });
-      alert('Notification sent successfully');
+      setAlert({ message: 'Notification sent successfully', type: 'success' });
     } catch (error) {
       console.error('Failed to send notification:', error);
-      alert('Failed to send notification');
+      setAlert({ message: 'Failed to send notification', type: 'error' });
     }
   };
 
