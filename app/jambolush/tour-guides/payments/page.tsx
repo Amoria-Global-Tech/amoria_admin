@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../../../api/jambolush/api-conn'; // Correct import path
+import { usePreventDoubleClick } from '@/app/hooks/usePreventDoubleClick';
+import AlertNotification from '@/app/components/menu/notify';
 
 interface Payment {
   id: number;
@@ -323,6 +325,15 @@ export default function PaymentAdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<number | null>(null);
 
+  // Alert notification state
+  const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
+
+  // Double-click prevention hook
+  const { isProcessing: isPaymentProcessing, withPreventDoubleClick: wrapPaymentAction } = usePreventDoubleClick({
+    cooldownMs: 2000,
+    onCooldownClick: () => setAlert({ message: 'Please wait, action is already being processed...', type: 'warning' })
+  });
+
   // Fetches payments from the API based on current filters
   const fetchPayments = useCallback(async () => {
     setLoading(true);
@@ -365,7 +376,7 @@ export default function PaymentAdminDashboard() {
     setIsProcessModalOpen(true);
   };
 
-  const handleUpdatePaymentStatus = async (paymentId: number, newStatus: string, transactionId?: string) => {
+  const handleUpdatePaymentStatus = wrapPaymentAction(async (paymentId: number, newStatus: string, transactionId?: string) => {
     setIsProcessing(paymentId);
     try {
       // Use the API to update the payment status
@@ -375,19 +386,19 @@ export default function PaymentAdminDashboard() {
       });
 
       if (response.success) {
-        alert(`Payment ${newStatus} successfully`);
+        setAlert({ message: `Payment ${newStatus} successfully!`, type: 'success' });
         await fetchPayments(); // Refresh the list to show the update
       } else {
         throw new Error(response.error || 'Failed to update payment');
       }
     } catch (error) {
       console.error('Error updating payment:', error);
-      alert(error instanceof Error ? error.message : 'Failed to update payment');
+      setAlert({ message: error instanceof Error ? error.message : 'Failed to update payment', type: 'error' });
     } finally {
       setIsProcessing(null);
       setIsProcessModalOpen(false);
     }
-  };
+  });
 
   const handleRetryPayment = async (paymentId: number) => {
     await handleUpdatePaymentStatus(paymentId, 'pending');
@@ -738,6 +749,15 @@ export default function PaymentAdminDashboard() {
           }}
           payment={selectedPayment}
           onProcessPayment={handleUpdatePaymentStatus}
+        />
+      )}
+
+      {/* Alert Notification */}
+      {alert && (
+        <AlertNotification
+          message={alert.message}
+          type={alert.type}
+          onClose={() => setAlert(null)}
         />
       )}
     </>

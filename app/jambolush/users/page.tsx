@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import api from '@/app/api/conn';
+import { usePreventDoubleClick } from '@/app/hooks/usePreventDoubleClick';
+import AlertNotification from '@/app/components/menu/notify';
 
 interface User {
   id: number;
@@ -181,26 +183,36 @@ const AddUserModal = ({ onClose, onUserAdded }: {
     licenseNumber: ''
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async () => {
+  // Double-click prevention hook
+  const { isProcessing, withPreventDoubleClick: wrapSubmitAction } = usePreventDoubleClick({
+    cooldownMs: 2000,
+    onCooldownClick: () => setError('Please wait, your request is being processed...')
+  });
+
+  const handleSubmit = wrapSubmitAction(async () => {
     setLoading(true);
+    setError(null);
     try {
       const payload = {
         ...formData,
         experience: formData.experience ? parseInt(formData.experience) : undefined,
         tourGuideType: formData.userType === 'tourguide' ? formData.tourGuideType : undefined
       };
-      
+
       const response: any = await api.post('/admin/users', payload);
       if (response.success) {
         onUserAdded(response.user);
         onClose();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating user:', error);
+      setError(error.response?.data?.message || 'Failed to create user');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  });
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
@@ -376,6 +388,8 @@ const AddUserModal = ({ onClose, onUserAdded }: {
             />
           </div>
 
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -386,10 +400,10 @@ const AddUserModal = ({ onClose, onUserAdded }: {
             </button>
             <button
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading || isProcessing}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create User'}
+              {loading || isProcessing ? 'Creating...' : 'Create User'}
             </button>
           </div>
         </div>
@@ -1777,6 +1791,9 @@ const UsersAdminPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
+  // Alert notification state
+  const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
+
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -1819,6 +1836,7 @@ const UsersAdminPage = () => {
 
   const handleUserAdded = (newUser: User) => {
     setUsers([...users, newUser]);
+    setAlert({ message: 'User created successfully!', type: 'success' });
   };
 
   const handleUserUpdated = (updatedUser: User) => {
@@ -2050,6 +2068,15 @@ const UsersAdminPage = () => {
             user={selectedUser}
             onClose={() => setShowDetailsModal(false)}
             onUserUpdated={handleUserUpdated}
+          />
+        )}
+
+        {/* Alert Notification */}
+        {alert && (
+          <AlertNotification
+            message={alert.message}
+            type={alert.type}
+            onClose={() => setAlert(null)}
           />
         )}
       </div>

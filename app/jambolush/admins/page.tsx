@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useCallback, ChangeEvent } from 'react';
 import api from '@/app/api/conn';
+import { usePreventDoubleClick } from '@/app/hooks/usePreventDoubleClick';
+import AlertNotification from '@/app/components/menu/notify';
 
 // --- TYPE DEFINITIONS ---
 // The User interface remains the same to handle the full data structure from the API
@@ -88,11 +90,17 @@ const AddAdminModal = ({ onClose, onAdminAdded }: { onClose: () => void; onAdmin
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Double-click prevention hook
+  const { isProcessing, withPreventDoubleClick: wrapSubmitAction } = usePreventDoubleClick({
+    cooldownMs: 2000,
+    onCooldownClick: () => setError('Please wait, your request is being processed...')
+  });
+
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = wrapSubmitAction(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -109,7 +117,7 @@ const AddAdminModal = ({ onClose, onAdminAdded }: { onClose: () => void; onAdmin
     } finally {
       setLoading(false);
     }
-  };
+  });
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
@@ -128,8 +136,8 @@ const AddAdminModal = ({ onClose, onAdminAdded }: { onClose: () => void; onAdmin
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={onClose} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-md">Cancel</button>
-            <button onClick={handleSubmit} disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md disabled:opacity-50">
-              {loading ? 'Creating...' : 'Create Admin'}
+            <button onClick={handleSubmit} disabled={loading || isProcessing} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md disabled:opacity-50">
+              {loading || isProcessing ? 'Creating...' : 'Create Admin'}
             </button>
           </div>
         </div>
@@ -145,6 +153,9 @@ const AdminsOnlyPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setAddModalOpen] = useState(false);
+
+  // Alert notification state
+  const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   const fetchAdmins = useCallback(async () => {
     setLoading(true);
@@ -166,6 +177,7 @@ const AdminsOnlyPage = () => {
 
   const handleAdminAdded = (newAdmin: User) => {
     setAdmins(prev => [newAdmin, ...prev]);
+    setAlert({ message: 'Administrator created successfully!', type: 'success' });
   };
 
   const filteredAdmins = useMemo(() => {
@@ -250,6 +262,15 @@ const AdminsOnlyPage = () => {
       </div>
 
       {isAddModalOpen && <AddAdminModal onClose={() => setAddModalOpen(false)} onAdminAdded={handleAdminAdded} />}
+
+      {/* Alert Notification */}
+      {alert && (
+        <AlertNotification
+          message={alert.message}
+          type={alert.type}
+          onClose={() => setAlert(null)}
+        />
+      )}
     </div>
   );
 };

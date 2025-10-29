@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
+import { usePreventDoubleClick } from '@/app/hooks/usePreventDoubleClick';
+import AlertNotification from '@/app/components/menu/notify';
 
 // --- (StatCard component is the same) ---
 const StatCard: React.FC<{ title: string; value: any; icon: string; iconBg: string; iconColor: string; }> = ({ title, value, icon, iconBg, iconColor }) => (
@@ -175,6 +177,15 @@ const TourGuidesAdminPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedGuide, setSelectedGuide] = useState<TourGuide | null>(null);
 
+  // Alert notification state
+  const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
+
+  // Double-click prevention hook
+  const { isProcessing: isApproving, withPreventDoubleClick: wrapApproveAction } = usePreventDoubleClick({
+    cooldownMs: 2000,
+    onCooldownClick: () => setAlert({ message: 'Please wait, action is already being processed...', type: 'warning' })
+  });
+
   useEffect(() => {
     setGuides(mockGuides);
   }, []);
@@ -192,7 +203,7 @@ const TourGuidesAdminPage: React.FC = () => {
   };
 
   // NEW: Handler to approve a pending guide
-  const handleApproveGuide = (guideId: string) => {
+  const handleApproveGuide = wrapApproveAction(async (guideId: string) => {
     const updatedGuides = guides.map(guide => {
       if (guide.id === guideId) {
         return { ...guide, status: 'active' as const };
@@ -200,7 +211,8 @@ const TourGuidesAdminPage: React.FC = () => {
       return guide;
     });
     setGuides(updatedGuides);
-  };
+    setAlert({ message: 'Tour guide approved successfully!', type: 'success' });
+  });
 
   const stats = useMemo(() => ({
     total: guides.length,
@@ -249,6 +261,15 @@ const TourGuidesAdminPage: React.FC = () => {
         
         {/* NEW: Render the modal conditionally */}
         {isModalOpen && <ProfileModal guide={selectedGuide} onClose={handleCloseModal} />}
+
+        {/* Alert Notification */}
+        {alert && (
+          <AlertNotification
+            message={alert.message}
+            type={alert.type}
+            onClose={() => setAlert(null)}
+          />
+        )}
       </div>
     </div>
   );

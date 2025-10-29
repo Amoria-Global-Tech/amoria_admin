@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '@/app/api/conn';
+import { usePreventDoubleClick } from '@/app/hooks/usePreventDoubleClick';
+import AlertNotification from '@/app/components/menu/notify';
 
 // Types based on your actual API response
 interface PaymentTransaction {
@@ -1275,6 +1277,20 @@ const FinanceAdminPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Alert notification state
+  const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
+
+  // Double-click prevention hooks
+  const { isProcessing: isProcessingTransaction, withPreventDoubleClick: wrapTransactionAction } = usePreventDoubleClick({
+    cooldownMs: 2000,
+    onCooldownClick: () => setAlert({ message: 'Please wait, action is already being processed...', type: 'warning' })
+  });
+
+  const { isProcessing: isProcessingMethod, withPreventDoubleClick: wrapMethodAction } = usePreventDoubleClick({
+    cooldownMs: 2000,
+    onCooldownClick: () => setAlert({ message: 'Please wait, action is already being processed...', type: 'warning' })
+  });
   
   // Data states
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
@@ -1594,7 +1610,7 @@ const FinanceAdminPage = () => {
     }
   }, [searchTerm, statusFilter, typeFilter, dateRange]);
 
-  const handleTransactionAction = async (action: string, data?: any) => {
+  const handleTransactionAction = wrapTransactionAction(async (action: string, data?: any) => {
     try {
       let endpoint = '';
       let payload = {};
@@ -1635,6 +1651,7 @@ const FinanceAdminPage = () => {
 
       const response = await api.post(endpoint, payload);
       if (response.data.success) {
+        setAlert({ message: 'Action completed successfully!', type: 'success' });
         // Refresh data after action
         if (data.type === 'payment') {
           await fetchPayments(paymentsPagination.page, paymentsPagination.limit);
@@ -1646,16 +1663,17 @@ const FinanceAdminPage = () => {
       }
     } catch (error) {
       console.error(`Action ${action} failed:`, error);
+      setAlert({ message: `Action failed: ${error instanceof Error ? error.message : 'Unknown error'}`, type: 'error' });
       throw error;
     }
-  };
+  });
 
   // Handlers for new Method Requests
-  const handleApproveMethod = async (id: string) => {
+  const handleApproveMethod = wrapMethodAction(async (id: string) => {
     try {
       // Check authentication
         const isAuthenticated = localStorage.getItem('authToken');
-        
+
         if (!isAuthenticated) {
           window.location.assign('/auth');
           return;
@@ -1666,31 +1684,34 @@ const FinanceAdminPage = () => {
       if(!user.data.id) throw new Error('Failed to retrieve admin info');
 
       const adminId = user.data.id; // Replace with actual admin ID retrieval logic
-      alert(adminId);
       const response = await api.post(`/transactions/withdrawal-methods/${id}/approve`, {adminId: adminId});
       if (response.data.success) {
+        setAlert({ message: 'Withdrawal method approved successfully!', type: 'success' });
         await fetchMethodRequests(methodRequestsPagination.page, methodRequestsPagination.limit);
       }
     } catch (error) {
       console.error('Failed to approve method:', error);
+      setAlert({ message: 'Failed to approve method.', type: 'error' });
       setError('Failed to approve method.');
       throw error; // Re-throw to be caught by modal
     }
-  };
-  
-  const handleRejectMethod = async (id: string, reason: string) => {
+  });
+
+  const handleRejectMethod = wrapMethodAction(async (id: string, reason: string) => {
     try {
       // Assuming adminId is handled by backend auth middleware
       const response = await api.post(`/transactions/withdrawal-methods/${id}/reject`, { reason });
       if (response.data.success) {
+        setAlert({ message: 'Withdrawal method rejected successfully!', type: 'success' });
         await fetchMethodRequests(methodRequestsPagination.page, methodRequestsPagination.limit);
       }
     } catch (error) {
       console.error('Failed to reject method:', error);
+      setAlert({ message: 'Failed to reject method.', type: 'error' });
       setError('Failed to reject method.');
       throw error; // Re-throw to be caught by modal
     }
-  };
+  });
 
   const handleNotifyUser = async (transactionId: string, message: string) => {
     try {
@@ -2444,17 +2465,27 @@ const FinanceAdminPage = () => {
                                       <>
                                         <button
                                           onClick={() => handleTransactionAction('approve_withdrawal', { transactionId: withdrawal.id, type: 'withdrawal' })}
-                                          className="text-green-400 hover:text-green-300 p-1"
+                                          className={`text-green-400 hover:text-green-300 p-1 ${isProcessingTransaction ? 'opacity-50 cursor-not-allowed' : ''}`}
                                           title="Approve"
+                                          disabled={isProcessingTransaction}
                                         >
-                                          <i className="bi bi-check-circle text-lg"></i>
+                                          {isProcessingTransaction ? (
+                                            <i className="bi bi-hourglass-split text-lg animate-spin"></i>
+                                          ) : (
+                                            <i className="bi bi-check-circle text-lg"></i>
+                                          )}
                                         </button>
                                         <button
                                           onClick={() => handleTransactionAction('reject_withdrawal', { transactionId: withdrawal.id, type: 'withdrawal' })}
-                                          className="text-red-400 hover:text-red-300 p-1"
+                                          className={`text-red-400 hover:text-red-300 p-1 ${isProcessingTransaction ? 'opacity-50 cursor-not-allowed' : ''}`}
                                           title="Reject"
+                                          disabled={isProcessingTransaction}
                                         >
-                                          <i className="bi bi-x-circle text-lg"></i>
+                                          {isProcessingTransaction ? (
+                                            <i className="bi bi-hourglass-split text-lg animate-spin"></i>
+                                          ) : (
+                                            <i className="bi bi-x-circle text-lg"></i>
+                                          )}
                                         </button>
                                       </>
                                     )}
@@ -3009,6 +3040,15 @@ const FinanceAdminPage = () => {
             onClose={() => setShowMethodRequestModal(false)}
             onApprove={handleApproveMethod}
             onReject={handleRejectMethod}
+          />
+        )}
+
+        {/* Alert Notification */}
+        {alert && (
+          <AlertNotification
+            message={alert.message}
+            type={alert.type}
+            onClose={() => setAlert(null)}
           />
         )}
       </div>
