@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
 import api from "@/app/api/conn"; // Assuming you have your API instance here
 
 interface EmailFormData {
@@ -166,16 +167,29 @@ export default function AdminAuthPage() {
 
       if (response.data.user) {
         const { accessToken, refreshToken } = response.data;
-        
+
         // Store tokens in localStorage
         localStorage.setItem('authToken', accessToken);
         localStorage.setItem('refreshToken', refreshToken);
-        
+
+        // Store tokens in cookies for middleware
+        Cookies.set('authToken', accessToken, {
+          expires: 7, // 7 days
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        });
+
+        Cookies.set('refreshToken', refreshToken, {
+          expires: 30, // 30 days
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict'
+        });
+
         // Clear temporary OTP data
         localStorage.removeItem('userEmail');
         localStorage.removeItem('authOTP');
         localStorage.removeItem('otpTimestamp');
-        
+
         // Redirect to admin dashboard
         router.push('/');
       } else {

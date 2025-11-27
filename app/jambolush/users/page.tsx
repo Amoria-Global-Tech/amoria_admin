@@ -423,6 +423,7 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<Partial<User>>({});
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -476,62 +477,94 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
 
   const handleUpdate = async () => {
     if (!user) return;
+    if (actionLoading) return; // Prevent duplicate clicks
+
     setActionLoading('update');
+    setAlert(null);
     try {
-      const response: any = await api.put(`/admin/users/${user.id}`, formData);
-      if (response.success) {
-        setUserDetails(response.user);
-        onUserUpdated(response.user);
+      // Remove read-only fields that shouldn't be in the update payload
+      const { id, createdAt, lastLogin, totalBookings, totalProperties, totalTours, ...updateData } = formData as User;
+
+      const response: any = await api.put(`/admin/users/${user.id}`, updateData);
+      if (response.success || response.data) {
+        const updatedUser = response.user || response.data;
+        setUserDetails(updatedUser);
+        onUserUpdated(updatedUser);
         setEditMode(false);
+        setAlert({ message: 'User updated successfully!', type: 'success' });
+      } else {
+        setAlert({ message: response.message || 'Failed to update user', type: 'error' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating user:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update user';
+      setAlert({ message: errorMessage, type: 'error' });
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   };
 
   const handleAction = async (action: string, data?: any) => {
     if (!user) return;
+    if (actionLoading) return; // Prevent duplicate clicks
+
     setActionLoading(action);
+    setAlert(null);
     try {
       let response: any;
+      let successMessage = '';
+
       switch (action) {
         case 'suspend':
           response = await api.post(`/admin/users/${user.id}/suspend`, data);
+          successMessage = 'User suspended successfully';
           break;
         case 'activate':
           response = await api.post(`/admin/users/${user.id}/activate`);
+          successMessage = 'User activated successfully';
           break;
         case 'verify_kyc':
           response = await api.put(`/admin/users/${user.id}`, { kycStatus: 'approved', verificationStatus: 'verified' });
+          successMessage = 'KYC verified successfully';
           break;
         case 'reject_kyc':
           response = await api.put(`/admin/users/${user.id}`, { kycStatus: 'rejected' });
+          successMessage = 'KYC rejected';
           break;
         case 'verify_account':
           response = await api.put(`/admin/users/${user.id}`, { verificationStatus: 'verified', isVerified: true });
+          successMessage = 'Account verified successfully';
           break;
         case 'reset_password':
           response = await api.post(`/admin/users/${user.id}/reset-password`);
+          successMessage = 'Password reset email sent';
           break;
         case 'enable_2fa':
           response = await api.put(`/admin/users/${user.id}`, { twoFactorEnabled: true });
+          successMessage = 'Two-factor authentication enabled';
           break;
         case 'disable_2fa':
           response = await api.put(`/admin/users/${user.id}`, { twoFactorEnabled: false });
+          successMessage = 'Two-factor authentication disabled';
           break;
         default:
           return;
       }
-      
-      if (response.success) {
+
+      if (response.success || response.data) {
         await fetchUserDetails();
         onUserUpdated(response.user || response.data);
+        setAlert({ message: successMessage, type: 'success' });
+      } else {
+        setAlert({ message: response.message || 'Action failed', type: 'error' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error ${action}:`, error);
+      const errorMessage = error.response?.data?.message || error.message || `Failed to ${action.replace('_', ' ')}`;
+      setAlert({ message: errorMessage, type: 'error' });
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   };
 
   if (!user) return null;
@@ -1529,15 +1562,27 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
             </button>
           )}
         </div>
+
+        {/* Alert Notification */}
+        {alert && (
+          <div className="mt-4">
+            <AlertNotification
+              message={alert.message}
+              type={alert.type}
+              onClose={() => setAlert(null)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-const UserGrid = ({ users, onViewDetails, onUserAction }: {
+const UserGrid = ({ users, onViewDetails, onUserAction, actionLoading }: {
   users: User[];
   onViewDetails: (user: User) => void;
   onUserAction: (action: string, user: User) => void;
+  actionLoading?: { userId: number; action: string } | null;
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1571,6 +1616,7 @@ const UserGrid = ({ users, onViewDetails, onUserAction }: {
                 user.userType === 'host' ? 'bg-blue-500/20 text-blue-400' :
                 user.userType === 'agent' ? 'bg-green-500/20 text-green-400' :
                 user.userType === 'tourguide' ? 'bg-purple-500/20 text-purple-400' :
+                user.userType === 'admin' ? 'bg-red-500/20 text-red-400' :
                 'bg-gray-500/20 text-gray-400'
               }`}>
                 {user.userType}
@@ -1617,23 +1663,26 @@ const UserGrid = ({ users, onViewDetails, onUserAction }: {
           <div className="flex gap-2">
             <button
               onClick={() => onViewDetails(user)}
-              className="flex-1 text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 px-3 py-2 rounded-md"
+              disabled={actionLoading?.userId === user.id}
+              className="flex-1 text-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 px-3 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               View Details
             </button>
             {user.status === 'active' ? (
               <button
                 onClick={() => onUserAction('suspend', user)}
-                className="text-sm bg-red-500/20 text-red-400 hover:bg-red-500/40 px-3 py-2 rounded-md"
+                disabled={actionLoading?.userId === user.id && actionLoading?.action === 'suspend'}
+                className="text-sm bg-red-500/20 text-red-400 hover:bg-red-500/40 px-3 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Suspend
+                {actionLoading?.userId === user.id && actionLoading?.action === 'suspend' ? 'Suspending...' : 'Suspend'}
               </button>
             ) : (
               <button
                 onClick={() => onUserAction('activate', user)}
-                className="text-sm bg-green-500/20 text-green-400 hover:bg-green-500/40 px-3 py-2 rounded-md"
+                disabled={actionLoading?.userId === user.id && actionLoading?.action === 'activate'}
+                className="text-sm bg-green-500/20 text-green-400 hover:bg-green-500/40 px-3 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Activate
+                {actionLoading?.userId === user.id && actionLoading?.action === 'activate' ? 'Activating...' : 'Activate'}
               </button>
             )}
           </div>
@@ -1643,10 +1692,11 @@ const UserGrid = ({ users, onViewDetails, onUserAction }: {
   );
 };
 
-const UserTable = ({ users, onViewDetails, onUserAction }: {
+const UserTable = ({ users, onViewDetails, onUserAction, actionLoading }: {
   users: User[];
   onViewDetails: (user: User) => void;
   onUserAction: (action: string, user: User) => void;
+  actionLoading?: { userId: number; action: string } | null;
 }) => {
   return (
     <div className="bg-[#0b1c36]/80 border border-slate-700/50 rounded-lg shadow-lg overflow-hidden">
@@ -1692,6 +1742,7 @@ const UserTable = ({ users, onViewDetails, onUserAction }: {
                     user.userType === 'host' ? 'bg-blue-500/20 text-blue-400' :
                     user.userType === 'agent' ? 'bg-green-500/20 text-green-400' :
                     user.userType === 'tourguide' ? 'bg-purple-500/20 text-purple-400' :
+                    user.userType === 'admin' ? 'bg-red-500/20 text-red-400' :
                     'bg-gray-500/20 text-gray-400'
                   }`}>
                     {user.userType}
@@ -1736,7 +1787,8 @@ const UserTable = ({ users, onViewDetails, onUserAction }: {
                   <div className="flex gap-2 justify-center">
                     <button
                       onClick={() => onViewDetails(user)}
-                      className="text-blue-400 hover:text-blue-300"
+                      disabled={actionLoading?.userId === user.id}
+                      className="text-blue-400 hover:text-blue-300 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="View Details"
                     >
                       <i className="bi bi-eye"></i>
@@ -1744,27 +1796,30 @@ const UserTable = ({ users, onViewDetails, onUserAction }: {
                     {user.status === 'active' ? (
                       <button
                         onClick={() => onUserAction('suspend', user)}
-                        className="text-red-400 hover:text-red-300"
-                        title="Suspend User"
+                        disabled={actionLoading?.userId === user.id && actionLoading?.action === 'suspend'}
+                        className="text-red-400 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={actionLoading?.userId === user.id && actionLoading?.action === 'suspend' ? 'Suspending...' : 'Suspend User'}
                       >
-                        <i className="bi bi-pause-circle"></i>
+                        <i className={`bi ${actionLoading?.userId === user.id && actionLoading?.action === 'suspend' ? 'bi-hourglass-split animate-spin' : 'bi-pause-circle'}`}></i>
                       </button>
                     ) : (
                       <button
                         onClick={() => onUserAction('activate', user)}
-                        className="text-green-400 hover:text-green-300"
-                        title="Activate User"
+                        disabled={actionLoading?.userId === user.id && actionLoading?.action === 'activate'}
+                        className="text-green-400 hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={actionLoading?.userId === user.id && actionLoading?.action === 'activate' ? 'Activating...' : 'Activate User'}
                       >
-                        <i className="bi bi-play-circle"></i>
+                        <i className={`bi ${actionLoading?.userId === user.id && actionLoading?.action === 'activate' ? 'bi-hourglass-split animate-spin' : 'bi-play-circle'}`}></i>
                       </button>
                     )}
                     {user.kycStatus === 'pending' && (
                       <button
                         onClick={() => onUserAction('verify_kyc', user)}
-                        className="text-purple-400 hover:text-purple-300"
-                        title="Approve KYC"
+                        disabled={actionLoading?.userId === user.id && actionLoading?.action === 'verify_kyc'}
+                        className="text-purple-400 hover:text-purple-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={actionLoading?.userId === user.id && actionLoading?.action === 'verify_kyc' ? 'Verifying...' : 'Approve KYC'}
                       >
-                        <i className="bi bi-check-circle"></i>
+                        <i className={`bi ${actionLoading?.userId === user.id && actionLoading?.action === 'verify_kyc' ? 'bi-hourglass-split animate-spin' : 'bi-check-circle'}`}></i>
                       </button>
                     )}
                   </div>
@@ -1791,6 +1846,13 @@ const UsersAdminPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
+
+  // Action loading state - tracks which user action is in progress
+  const [actionLoading, setActionLoading] = useState<{ userId: number; action: string } | null>(null);
+
   // Alert notification state
   const [alert, setAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' | 'warning' } | null>(null);
 
@@ -1802,8 +1864,8 @@ const UsersAdminPage = () => {
     setLoading(true);
     try {
       const response = await api.get('/admin/users');
-      const filteredUsers = response.data.data?.filter((user: User) => user.userType !== 'admin') || [];
-      setUsers(filteredUsers);
+      const allUsers = response.data.data || [];
+      setUsers(allUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
     }
@@ -1811,21 +1873,37 @@ const UsersAdminPage = () => {
   };
 
   const handleUserAction = async (action: string, user: User) => {
+    if (actionLoading) return; // Prevent duplicate clicks
+
+    setActionLoading({ userId: user.id, action });
+    setAlert(null);
     try {
       let response: any;
+      let successMessage = '';
+
       if (action === 'suspend') {
         response = await api.post(`/admin/users/${user.id}/suspend`);
+        successMessage = `${user.firstName} ${user.lastName} suspended successfully`;
       } else if (action === 'activate') {
         response = await api.post(`/admin/users/${user.id}/activate`);
+        successMessage = `${user.firstName} ${user.lastName} activated successfully`;
       } else if (action === 'verify_kyc') {
         response = await api.put(`/admin/users/${user.id}`, { kycStatus: 'approved' });
+        successMessage = `KYC approved for ${user.firstName} ${user.lastName}`;
       }
-      
-      if (response?.success) {
+
+      if (response?.success || response?.data) {
         fetchUsers();
+        setAlert({ message: successMessage, type: 'success' });
+      } else {
+        setAlert({ message: response?.message || 'Action failed', type: 'error' });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error ${action}ing user:`, error);
+      const errorMessage = error.response?.data?.message || error.message || `Failed to ${action} user`;
+      setAlert({ message: errorMessage, type: 'error' });
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -1884,6 +1962,17 @@ const UsersAdminPage = () => {
     return filtered;
   }, [users, activeTab, statusFilter, verificationFilter, kycFilter, searchTerm]);
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, statusFilter, verificationFilter, kycFilter, searchTerm]);
+
   const stats = useMemo(() => {
     const totalUsers = users.length;
     const activeUsers = users.filter(u => u.status === 'active').length;
@@ -1930,7 +2019,8 @@ const UsersAdminPage = () => {
               { key: 'agent', label: 'Agents' },
               { key: 'tourguide', label: 'Tour Guides' },
               { key: 'freelance', label: 'Freelance Guides' },
-              { key: 'employed', label: 'Employed Guides' }
+              { key: 'employed', label: 'Employed Guides' },
+              { key: 'admin', label: 'Admins' }
             ].map(tab => (
               <button
                 key={tab.key}
@@ -2024,13 +2114,29 @@ const UsersAdminPage = () => {
           </div>
         </div>
 
-        {/* Results count */}
-        <div className="mb-4">
+        {/* Results count and pagination info */}
+        <div className="mb-4 flex justify-between items-center">
           <p className="text-white/60">
-            Showing {filteredUsers.length} of {users.length} users
+            Showing {startIndex + 1}-{Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} users
             {activeTab !== 'all' && ` in ${activeTab.replace('_', ' ')}`}
             {statusFilter !== 'all' && ` with ${statusFilter} status`}
           </p>
+          <div className="flex items-center gap-2">
+            <label className="text-white/60 text-sm">Items per page:</label>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-slate-800/60 border border-slate-700 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="12">12</option>
+              <option value="24">24</option>
+              <option value="36">36</option>
+              <option value="48">48</option>
+            </select>
+          </div>
         </div>
 
         {/* Users Display */}
@@ -2041,19 +2147,90 @@ const UsersAdminPage = () => {
               <p className="text-white/60 text-lg">No users found matching your criteria</p>
             </div>
           ) : view === 'grid' ? (
-            <UserGrid 
-              users={filteredUsers} 
+            <UserGrid
+              users={paginatedUsers}
               onViewDetails={handleViewDetails}
               onUserAction={handleUserAction}
+              actionLoading={actionLoading}
             />
           ) : (
-            <UserTable 
-              users={filteredUsers} 
+            <UserTable
+              users={paginatedUsers}
               onViewDetails={handleViewDetails}
               onUserAction={handleUserAction}
+              actionLoading={actionLoading}
             />
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {filteredUsers.length > 0 && totalPages > 1 && (
+          <div className="mt-8 flex justify-center items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-slate-800/60 border border-slate-700 rounded-md text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+            >
+              <i className="bi bi-chevron-left"></i> Previous
+            </button>
+
+            <div className="flex gap-1">
+              {/* First page */}
+              {currentPage > 3 && (
+                <>
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    className="w-10 h-10 bg-slate-800/60 border border-slate-700 rounded-md text-white hover:bg-slate-700 transition-colors"
+                  >
+                    1
+                  </button>
+                  {currentPage > 4 && <span className="px-2 py-2 text-white/60">...</span>}
+                </>
+              )}
+
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => {
+                  // Show current page, 2 before, and 2 after
+                  return page >= currentPage - 2 && page <= currentPage + 2;
+                })
+                .map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-10 h-10 border rounded-md transition-colors ${
+                      currentPage === page
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-slate-800/60 border-slate-700 text-white hover:bg-slate-700'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+              {/* Last page */}
+              {currentPage < totalPages - 2 && (
+                <>
+                  {currentPage < totalPages - 3 && <span className="px-2 py-2 text-white/60">...</span>}
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    className="w-10 h-10 bg-slate-800/60 border border-slate-700 rounded-md text-white hover:bg-slate-700 transition-colors"
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-slate-800/60 border border-slate-700 rounded-md text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+            >
+              Next <i className="bi bi-chevron-right"></i>
+            </button>
+          </div>
+        )}
 
         {/* Modals */}
         {showAddModal && (
