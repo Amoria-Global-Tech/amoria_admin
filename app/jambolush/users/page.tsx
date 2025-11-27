@@ -483,7 +483,7 @@ const UserDetailsModal = ({ user, onClose, onUserUpdated }: {
     setAlert(null);
     try {
       // Remove read-only fields that shouldn't be in the update payload
-      const { id, createdAt, updatedAt, lastLogin, totalBookings, totalProperties, totalTours, ...updateData } = formData;
+      const { id, createdAt, lastLogin, totalBookings, totalProperties, totalTours, ...updateData } = formData as User;
 
       const response: any = await api.put(`/admin/users/${user.id}`, updateData);
       if (response.success || response.data) {
