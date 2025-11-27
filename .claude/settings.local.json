@@ -1,8 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(yarn add:*)",
+      "Bash(yarn cache clean:*)",
+      "Bash(yarn build)"
     ],
     "deny": [],
     "ask": []

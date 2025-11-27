@@ -1,6 +1,7 @@
 "use client";
 
 import api from "@/app/api/conn";
+import Cookies from "js-cookie";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -211,13 +212,18 @@ export default function Navbar() {
 
       localStorage.removeItem('authenticated');
       localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
       localStorage.removeItem('userInfo');
       localStorage.removeItem('userEmail');
       localStorage.removeItem('authOTP');
       localStorage.removeItem('otpTimestamp');
-      
+
+      // Clear cookies
+      Cookies.remove('authToken');
+      Cookies.remove('refreshToken');
+
       try {
-        await fetch('/api/auth/logout', { 
+        await fetch('/api/auth/logout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -230,7 +236,7 @@ export default function Navbar() {
       } catch (apiError) {
         console.warn('Server logout failed:', apiError);
       }
-      
+
       router.push('/auth');
     } catch (error) {
       console.error('Logout error:', error);

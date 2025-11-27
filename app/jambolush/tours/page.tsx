@@ -1121,7 +1121,7 @@ const ToursAdminPage: React.FC = () => {
                   
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <span className="text-white text-xl font-bold">${tour.price}</span>
+                      <span className="text-white text-xl font-bold">{tour.price ? tour.price.toLocaleString() : '0'} USD</span>
                       <div className="text-white/60 text-xs">
                         per person
                       </div>
@@ -1131,7 +1131,7 @@ const ToursAdminPage: React.FC = () => {
                         {tour.totalBookings} bookings
                       </div>
                       <div className="text-white/60 text-xs">
-                        ${tour.totalRevenue?.toLocaleString() ?? '0'} revenue
+                        {tour.totalRevenue?.toLocaleString() ?? '0'} USD revenue
                       </div>
                     </div>
                   </div>
@@ -1300,7 +1300,7 @@ const ToursAdminPage: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-white font-bold">${tour.price}</div>
+                        <div className="text-white font-bold">{tour.price ? tour.price.toLocaleString() : '0'} USD</div>
                         <div className="text-white/60 text-sm">per person</div>
                         <div className="text-white/60 text-xs">{tour.duration} hours</div>
                       </td>
@@ -1544,7 +1544,7 @@ const ToursAdminPage: React.FC = () => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-white/60">Price</span>
-                          <span className="text-white font-bold">${selectedTour.price}</span>
+                          <span className="text-white font-bold">{selectedTour.price ? selectedTour.price.toLocaleString() : '0'} USD</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-white/60">Weather Dependent</span>

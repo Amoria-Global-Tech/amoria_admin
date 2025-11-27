@@ -10,7 +10,9 @@ interface Property {
   location: string;
   type: string;
   category: string;
+  pricingType: 'night' | 'month';
   pricePerNight: number;
+  pricePerMonth: number;
   currency: string;
   status: 'active' | 'inactive' | 'pending' | 'rejected' | 'suspended';
   isVerified: boolean;
@@ -507,8 +509,13 @@ const PropertyDetailsModal = ({ property, onClose, onPropertyUpdated }: {
             </span>
           </div>
           <div className="bg-slate-800/50 p-4 rounded-lg">
-            <p className="text-white/60 text-sm">Price/Night</p>
-            <p className="text-white font-bold">{property.pricePerNight} {property.currency}</p>
+            <p className="text-white/60 text-sm">Price/{property.pricingType === 'night' ? 'Night' : 'Month'}</p>
+            <p className="text-white font-bold">
+              {property.pricingType === 'night'
+                ? `${property.pricePerNight ? property.pricePerNight.toLocaleString() : '0'} USD`
+                : `${property.pricePerMonth ? property.pricePerMonth.toLocaleString() : '0'} USD`
+              }
+            </p>
           </div>
           <div className="bg-slate-800/50 p-4 rounded-lg">
             <p className="text-white/60 text-sm">Rating</p>
@@ -628,7 +635,9 @@ const PropertyDetailsModal = ({ property, onClose, onPropertyUpdated }: {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-white/60 text-sm mb-1">Price per Night</label>
+                      <label className="block text-white/60 text-sm mb-1">
+                        Price per {propertyDetails?.pricingType === 'night' ? 'Night' : 'Month'}
+                      </label>
                       {editMode ? (
                         <div className="flex">
                           <input
@@ -648,7 +657,12 @@ const PropertyDetailsModal = ({ property, onClose, onPropertyUpdated }: {
                           </select>
                         </div>
                       ) : (
-                        <p className="text-white">{propertyDetails?.pricePerNight} {propertyDetails?.currency}</p>
+                        <p className="text-white">
+                          {propertyDetails?.pricingType === 'night'
+                            ? `${propertyDetails?.pricePerNight ? propertyDetails.pricePerNight.toLocaleString() : '0'} USD`
+                            : `${propertyDetails?.pricePerMonth ? propertyDetails.pricePerMonth.toLocaleString() : '0'} USD`
+                          }
+                        </p>
                       )}
                     </div>
 
@@ -933,8 +947,10 @@ const PropertyGrid = ({ properties, onViewDetails, onPropertyAction }: {
             <div className="flex justify-between items-start mb-3">
               <div className="flex-1">
                 <h3 className="text-white font-bold text-lg truncate">{property.name}</h3>
-                <p className="text-white/60 text-sm truncate">{property.location}</p>
-                <p className="text-white/60 text-xs">{property.type} • {property.category.replace('_', ' ')}</p>
+                <p className="text-white/60 text-sm truncate">{property.location || 'Location not specified'}</p>
+                <p className="text-white/60 text-xs">
+                  {property.type || 'N/A'} • {property.category ? property.category.replace('_', ' ') : 'N/A'}
+                </p>
               </div>
             </div>
             
@@ -957,8 +973,13 @@ const PropertyGrid = ({ properties, onViewDetails, onPropertyAction }: {
             </div>
 
             <div className="mb-4">
-              <p className="text-white font-bold text-lg">{property.pricePerNight.toLocaleString()} {property.currency}/night</p>
-              <p className="text-white/60 text-sm">Host: {property.hostName}</p>
+              <p className="text-white font-bold text-lg">
+                {property.pricingType === 'night'
+                  ? `${property.pricePerNight ? property.pricePerNight.toLocaleString() : '0'} USD/night`
+                  : `${property.pricePerMonth ? property.pricePerMonth.toLocaleString() : '0'} USD/month`
+                }
+              </p>
+              <p className="text-white/60 text-sm">Host: {property.hostName || 'Unknown'}</p>
             </div>
 
             <div className="flex gap-2">
@@ -1050,11 +1071,16 @@ const PropertyTable = ({ properties, onViewDetails, onPropertyAction }: {
                   </div>
                 </td>
                 <td className="p-4">
-                  <div className="text-white capitalize">{property.type}</div>
-                  <div className="text-white/60 text-xs">{property.category.replace('_', ' ')}</div>
+                  <div className="text-white capitalize">{property.type || 'N/A'}</div>
+                  <div className="text-white/60 text-xs">{property.category ? property.category.replace('_', ' ') : 'N/A'}</div>
                 </td>
                 <td className="p-4">
-                  <div className="text-white font-medium">{property.pricePerNight.toLocaleString()} {property.currency}</div>
+                  <div className="text-white font-medium">
+                    {property.pricingType === 'night'
+                      ? `${property.pricePerNight ? property.pricePerNight.toLocaleString() : '0'} USD/night`
+                      : `${property.pricePerMonth ? property.pricePerMonth.toLocaleString() : '0'} USD/month`
+                    }
+                  </div>
                 </td>
                 <td className="p-4">
                   <div className="flex flex-col gap-1">

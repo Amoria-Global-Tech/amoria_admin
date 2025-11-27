@@ -2,7 +2,7 @@
 // All frontend requests should go through this single file
 
 // Configuration - Fixed for Next.js API routes
-const PUBLIC_API_ENDPOINT_URL = '/api'; // Changed from 'http://localhost:5000/api'
+const PUBLIC_API_ENDPOINT_URL = '/api'; // Changed from 'http://localhost:4000/api'
 
 // Types and Interfaces
 export interface ApiResponse<T = any> {
